@@ -31,7 +31,7 @@ def _read_config(config):
 
 def _read_configs(configs):
     ''' parse the given config file, if available '''
-    logging.info('loading config from: %s', configs)
+    logging.info('loading config from %s', configs)
     for config in configs:
         try:
             return _read_config(config)

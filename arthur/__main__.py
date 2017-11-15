@@ -6,16 +6,16 @@ this is arthur's main entry point
 
 import logging
 logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format='[%(asctime)s][%(levelname)s] %(message)s',
     level=logging.INFO
 )
 
-from .notification import send_message
+from .parabola import update_repo
 
 
 def main():
     ''' the main function '''
-    send_message('hello')
+    update_repo()
 
 
 if __name__ == '__main__':

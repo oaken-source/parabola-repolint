@@ -24,6 +24,7 @@ setup(
     install_requires=[
         'python-telegram-bot',
         'pyyaml',
+        'sh',
     ],
 
     license='GPLv3',
