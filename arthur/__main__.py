@@ -1,12 +1,15 @@
 '''
-this is the entry point for arthurs build deamon
+this is arthur's main entry point
 '''
 
+import logging
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+
+from .notification import send_message
+
 def main():
-    '''
-    the main function
-    '''
-    pass
+    ''' the main function '''
+    send_message('hello')
 
 
 if __name__ == '__main__':

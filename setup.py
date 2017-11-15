@@ -17,13 +17,13 @@ setup(
 
     entry_points={
         'console_scripts': [
-            'arthurd = arthur.__main__:main',
-            'arthur = arthur.api:main',
+            'arthur = arthur.__main__:main',
         ],
     },
 
     install_requires=[
-        'telegram_send',
+        'python-telegram-bot',
+        'pyyaml',
     ],
 
     license='GPLv3',

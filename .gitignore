@@ -1,4 +1,7 @@
 
+# config files
+*.conf
+
 # python generated files
 *.pyc
 
