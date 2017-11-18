@@ -26,6 +26,7 @@ def _read_config(config):
     data = dict()
     with open(config) as file:
         data = yaml.safe_load(file.read())
+        logging.info('loaded config from %s', config)
     return Bunch(**data)
 
 
