@@ -23,21 +23,23 @@ class Chroot(object):
         ''' constructor '''
         self._arch = arch
         self._database = database
-        self._name = '%s-%s' % (database, arch)
 
-        self._pacman_conf = os.path.join(
+        self._name = '%s-%s' % (database, arch)
+        pacman_conf = os.path.join(
             CONFIG.parabola.pacman_conf_path,
             'pacman.conf.%s.%s' % (database, arch)
         )
-        if not os.path.exists(self._pacman_conf):
-            self._pacman_conf = os.path.join(
+
+        if not os.path.exists(pacman_conf):
+            self._name = 'default-%s' % arch
+            pacman_conf = os.path.join(
                 CONFIG.parabola.pacman_conf_path,
-                'pacman.conf.%s' % arch
+                'pacman.conf.default.%s' % arch
             )
 
         self._librechroot = sh.sudo.librechroot.bake(
             A=self._arch,
-            C=self._pacman_conf,
+            C=pacman_conf,
             n=self._name,
         )
         self._pacman = self._librechroot.run.pacman.bake()
@@ -97,6 +99,10 @@ class Repo(object):
     def update(self):
         ''' update the repo '''
         self._git.pull()
+
+    def get_pkgbuild(self, pkgbuild):
+        ''' get the pkgbuild of the given name '''
+        return Pkgbuild(os.path.join(self._path, pkgbuild, 'PKGBUILD'))
 
     def get_maintained_by(self, maintainer):
         ''' get the pkgbuilds maintained by the given maintainer '''
@@ -192,6 +198,8 @@ class Package(object):
             self._versions[1] = self._chroot.get_version_of(
                 '%s/%s' % (self._database, self._pkgname)
             )
+            logging.info('%s-%s: actual version is %s', self._pkgname,
+                         self._arch, self._versions[1])
         return self._versions[1]
 
     @property
@@ -199,6 +207,8 @@ class Package(object):
         ''' produce the latest version available of the package from upstream '''
         if self._versions[2] is None:
             self._versions[2] = VersionMaster.get_latest_version(self)
+            logging.info('%s-%s: latest version is %s', self._pkgname,
+                         self._arch, self._versions[2])
         return self._versions[2]
 
     def __lt__(self, other):
