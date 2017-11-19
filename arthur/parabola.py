@@ -35,14 +35,12 @@ class Chroot(object):
                 'pacman.conf.%s' % arch
             )
 
-        tmp = sh.sudo.librechroot.bake(
+        self._librechroot = sh.sudo.librechroot.bake(
             A=self._arch,
             C=self._pacman_conf,
             n=self._name,
-            _err=_LOG
         )
-        self._librechroot = tmp.bake(_out=_LOG)
-        self._pacman = tmp.run.pacman.bake()
+        self._pacman = self._librechroot.run.pacman.bake()
 
     @property
     def arch(self):
@@ -93,16 +91,8 @@ class Repo(object):
     def __init__(self, path):
         ''' constructor '''
         self._path = path
-        self._git = sh.git.bake(
-            _cwd=path,
-            _out=_LOG,
-            _err=_LOG
-        )
-        self._grep = sh.grep.bake(
-            '-lR',
-            _cwd=path,
-            _err=_LOG
-        )
+        self._git = sh.git.bake(_cwd=path)
+        self._grep = sh.grep.bake('-lR', _cwd=path)
 
     def update(self):
         ''' update the repo '''
@@ -128,10 +118,7 @@ class Pkgbuild(object):
         self._database = os.path.basename(os.path.dirname(os.path.dirname(path)))
         self._pkgbase = os.path.basename(os.path.dirname(path))
 
-        self._makepkg = sh.makepkg.bake(
-            _cwd=os.path.dirname(path),
-            _err=_LOG
-        )
+        self._makepkg = sh.makepkg.bake(_cwd=os.path.dirname(path))
 
     @property
     def pkgbase(self):
@@ -226,21 +213,28 @@ class Package(object):
 class Version(object):
     ''' represent a package version '''
 
-    def __init__(self, version):
+    def __init__(self, version, foreign=False):
         ''' constructor '''
         self._full_version = version
+        self._foreign = foreign
 
         self._pkgver = version
         self._pkgrel = None
-        if '-' in version:
-            self._pkgver, self._pkgrel = version.split('-')
         self._epoch = None
-        if ':' in self._pkgver:
+
+        if not foreign:
+            self._pkgver, self._pkgrel = version.split('-')
+        if not foreign and ':' in self._pkgver:
             self._epoch, self._pkgver = self._pkgver.split(':')
 
         self._epoch = parse_version(self._epoch) if self._epoch is not None else None
         self._pkgver = parse_version(self._pkgver)
         self._pkgrel = parse_version(self._pkgrel) if self._pkgrel is not None else None
+
+    @property
+    def foreign(self):
+        ''' tell if the version is foreign '''
+        return self._foreign
 
     @property
     def epoch(self):
@@ -259,25 +253,36 @@ class Version(object):
 
     def __eq__(self, other):
         ''' equals operator '''
+        if self.foreign or other.foreign:
+            return self.pkgver == other.pkgver
+
         return (self.epoch == other.epoch
                 and self.pkgver == other.pkgver
                 and self.pkgrel == other.pkgrel)
 
     def __gt__(self, other):
         ''' greater than operator '''
+        if self.foreign or other.foreign:
+            return self.pkgver > other.pkgver
+
         if self.epoch != other.epoch:
-            return other.epoch is None or self.epoch > other.epoch
+            return (other.epoch is None or other.epoch is not None
+                    and self.epoch > other.epoch)
         if self.pkgver != other.pkgver:
             return self.pkgver > other.pkgver
-        return other.pkgrel is None or self.pkgrel > other.pkgrel
+        return self.pkgrel > other.pkgrel
 
     def __lt__(self, other):
         ''' less than operator '''
+        if self.foreign or other.foreign:
+            return self.pkgver < other.pkgver
+
         if self.epoch != other.epoch:
-            return self.epoch is None or self.epoch < other.epoch
+            return (self.epoch is None or other.epoch is not None
+                    and self.epoch < other.epoch)
         if self.pkgver != other.pkgver:
             return self.pkgver < other.pkgver
-        return self.pkgrel is None or self.pkgrel < other.pkgrel
+        return self.pkgrel < other.pkgrel
 
     def __repr__(self):
         ''' produce a string representation '''
@@ -293,26 +298,24 @@ class VersionMaster(object):
     @classmethod
     def get_latest_version(cls, package):
         ''' try and fetch the latest version for a given package '''
-        if package.pkgname not in cls._fetch:
+        match = next((key for key in cls._fetch if re.match(key, package.pkgname)), None)
+        if match is None:
             return None
 
-        if package.pkgname not in cls._cache:
-            value = cls._fetch[package.pkgname]()
-            value = Version(value) if value is not None else None
-            for pkg in cls._fetch[package.pkgname].group:
-                cls._cache[pkg] = value
-        return cls._cache[package.pkgname]
+        fetch = cls._fetch[match]
+        if fetch in cls._cache:
+            return cls._cache[fetch]
+
+        value = Version(fetch(), True)
+        cls._cache[fetch] = value
+        return value
 
     @classmethod
-    def register(cls, name):
+    def register(cls, regex):
         ''' register a version callback '''
         def wrap(func):
             ''' the wrapper, yo '''
-            try:
-                func.group.append(name)
-            except AttributeError:
-                func.group = [name]
-            cls._fetch[name] = func
-            logging.info('registered version callback for %s %s', name, func.group)
+            cls._fetch[r'^%s$' % regex] = func
+            logging.info('registered version callback for %s', regex)
             return func
         return wrap

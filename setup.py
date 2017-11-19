@@ -25,6 +25,9 @@ setup(
         'python-telegram-bot',
         'pyyaml',
         'sh',
+        'lxml',
+        'beautifulsoup4',
+        'requests',
     ],
 
     license='GPLv3',

@@ -19,5 +19,5 @@ def send_message(msg, *args):
         return
 
     _MESSAGES.append(msg)
-    logging.info('sending "%s"', msg)
-    _BOT.send_message(CONFIG.notification.telegram.chat_id, msg)
+    logging.warning(msg)
+    #_BOT.send_message(CONFIG.notification.telegram.chat_id, msg)
