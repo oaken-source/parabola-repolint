@@ -22,6 +22,7 @@ class Chroot(object):
 
     def __init__(self, arch, database):
         ''' constructor '''
+        logging.info('creating chroot for %s-%s', database, arch)
         self._arch = arch
         self._database = database
 
@@ -38,12 +39,15 @@ class Chroot(object):
                 'pacman.conf.default.%s' % arch
             )
 
+        logging.info('  name: %s', self._name)
         self._librechroot = sh.sudo.librechroot.bake(
             A=self._arch,
             C=pacman_conf,
             n=self._name,
         )
         self._pacman = self._librechroot.run.pacman.bake()
+        logging.info('  lbrechroot: %s', self._librechroot)
+        logging.info('  pacman:     %s', self._pacman)
 
     @property
     def arch(self):
@@ -62,14 +66,19 @@ class Chroot(object):
 
     def update(self):
         ''' update the chroot '''
-        if OFFLINE or self.name in self.cache:
+        if OFFLINE:
             return
 
+        logging.info('chroot %s: requesting update', self)
+        if self.name in self.cache:
+            logging.info('  already in cache, skipping')
+            return
         self.cache.append(self.name)
 
         try:
             self._librechroot('make')
         except sh.ErrorReturnCode_134:
+            logging.warning('chroot %s: create failed, attempting fix', self)
             # workaround for failing locale-gen on arm chroots
             rootrun = self._librechroot.bake('-l', 'root', 'run')
             rootrun('gunzip', '--keep', '/usr/share/i18n/charmaps/UTF-8.gz')
@@ -83,6 +92,7 @@ class Chroot(object):
 
     def get_version_of(self, pkgname):
         ''' produce the version number of the given package '''
+        logging.info('chroot %s: requested version of %s', self, pkgname)
         try:
             return Version(self._pacman('-Spdd', '--print-format', '%v', pkgname).rstrip())
         except sh.ErrorReturnCode_1:
@@ -90,11 +100,16 @@ class Chroot(object):
 
     def can_install(self, package):
         ''' determine whether the given package can be installed '''
+        logging.info('chroot %s: checking install of package %s', self, package)
         try:
             self._pacman('-Sp', '%s/%s' % (package.database, package.pkgname))
             return True
         except sh.ErrorReturnCode_1:
             return False
+
+    def __repr__(self):
+        ''' produce a string representation '''
+        return self._name
 
 
 class Repo(object):
@@ -102,23 +117,30 @@ class Repo(object):
 
     def __init__(self, path):
         ''' constructor '''
+        logging.info('creating repo at %s', path)
+
         self._path = path
         self._git = sh.git.bake(_cwd=path)
         self._grep = sh.grep.bake('-lR', _cwd=path)
+        logging.info('  git:  %s', self._git)
+        logging.info('  grep: %s', self._grep)
 
     def update(self):
         ''' update the repo '''
         if OFFLINE:
             return
 
+        logging.info('%s: attempting repo update', self._path)
         self._git.pull()
 
     def get_pkgbuild(self, pkgbuild):
         ''' get the pkgbuild of the given name '''
+        logging.info('%s: attempting to get pkgbuild %s', self._path, pkgbuild)
         return Pkgbuild(os.path.join(self._path, pkgbuild, 'PKGBUILD'))
 
     def get_maintained_by(self, maintainer):
         ''' get the pkgbuilds maintained by the given maintainer '''
+        logging.info('%s: attempting to packages by %s', self._path, maintainer)
         for pkgbuild in self._grep('# Maintainer: %s' % maintainer).split():
             yield Pkgbuild(os.path.join(self._path, pkgbuild))
 
@@ -132,12 +154,14 @@ class Pkgbuild(object):
 
     def __init__(self, path):
         ''' constructor '''
-        self._path = path
+        logging.info('creating pkgbuild from %s', path)
 
+        self._path = path
         self._database = os.path.basename(os.path.dirname(os.path.dirname(path)))
         self._pkgbase = os.path.basename(os.path.dirname(path))
-
         self._makepkg = sh.makepkg.bake(_cwd=os.path.dirname(path))
+
+        logging.info('  makepkg: %s', self._makepkg)
 
     @property
     def pkgbase(self):
@@ -151,6 +175,7 @@ class Pkgbuild(object):
 
     def get_packages(self):
         ''' get the packages contained in the pkgbuild '''
+        logging.info('%s: attempting to produce list of packages', self)
         for package in self._makepkg('--packagelist').split():
             yield Package(package, self._database)
 
@@ -168,6 +193,8 @@ class Package(object):
 
     def __init__(self, package, database):
         ''' constructor '''
+        logging.info('creating package for %s/%s', database, package)
+
         self._fullname = package
         self._database = database
 
@@ -177,6 +204,10 @@ class Package(object):
         self._pkgname = match.group(1)
         self._versions = [Version(match.group(2)), None, None]
         self._arch = match.group(3)
+
+        logging.info('  pkgname: %s', self._pkgname)
+        logging.info('  version: %s', self._versions[0])
+        logging.info('  arch:    %s', self._arch)
 
         self._chroot = Chroot(
             CONFIG.parabola.native_arch if self._arch == 'any' else self._arch,
@@ -243,6 +274,7 @@ class Version(object):
     def __init__(self, version, foreign=False):
         ''' constructor '''
         logging.info('constructing version from `%s`', version)
+
         self._full_version = version
         self._foreign = foreign
 
@@ -329,15 +361,20 @@ class VersionMaster(object):
         if OFFLINE:
             return None
 
+        logging.info('attempting to fetch latest version for %s', package)
+
         match = next((key for key in cls._fetch if re.match(key, package.pkgname)), None)
         if match is None:
             return None
+        logging.info('  match is %s', match)
 
         fetch = cls._fetch[match]
         if fetch in cls._cache:
             return cls._cache[fetch]
+        logging.info('  fetch is %s', fetch)
 
         value = Version(fetch(), True)
+        logging.info('  value is %s', value)
         cls._cache[fetch] = value
         return value
 

@@ -25,8 +25,10 @@ from . import versions # pylint: disable=unused-import
 
 def check_pkgbuild(pkgbuild):
     ''' check a pkgbuild for outdated packages '''
+    logging.info('checking pkgbuild %s', pkgbuild)
     for package in sorted(pkgbuild.get_packages()):
         if not parabola.OFFLINE:
+            logging.info('  checking for outdated version checker or pkgbuild')
             if package.latest_version is None:
                 send_message('%s/%s: need latest',
                              package.database, package.pkgname)
@@ -34,9 +36,13 @@ def check_pkgbuild(pkgbuild):
                 send_message('%s/%s: needs %s',
                              package.database, package.pkgname,
                              package.latest_version)
+
+        logging.info('  checking for broken dependencies')
         if not package.can_install():
             send_message('%s/%s-%s: can not install',
                          package.database, package.pkgname, package.arch)
+
+        logging.info('  checking for missing or outdated builds')
         if package.actual_version is None:
             send_message('%s/%s-%s: needs %s',
                          package.database, package.pkgname, package.arch,
@@ -53,6 +59,7 @@ def check_pkgbuild(pkgbuild):
 
 def checked_main(args):
     ''' the main function '''
+    logging.info('parsing command line args %s', args)
     parser = argparse.ArgumentParser(description='a parabola package monkey')
     parser.add_argument('packages', metavar='Package', nargs='*', action='store', type=str,
                         help='the packages to be checked (default: all maintained)')
@@ -70,6 +77,8 @@ def checked_main(args):
     args.packages = [repo.get_pkgbuild(package) for package in args.packages]
     if not args.packages:
         args.packages = sorted(repo.get_maintained_by(CONFIG.parabola.maintainer))
+
+    logging.info('package queue: %s', args.packages)
 
     for package in args.packages:
         check_pkgbuild(package)
