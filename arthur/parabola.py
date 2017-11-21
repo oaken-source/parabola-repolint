@@ -88,6 +88,14 @@ class Chroot(object):
         except sh.ErrorReturnCode_1:
             return None
 
+    def can_install(self, package):
+        ''' determine whether the given package can be installed '''
+        try:
+            self._pacman('-Sp', '%s/%s' % (package.database, package.pkgname))
+            return True
+        except sh.ErrorReturnCode_1:
+            return False
+
 
 class Repo(object):
     ''' represent the parabola package repository '''
@@ -215,6 +223,10 @@ class Package(object):
             logging.info('%s-%s: latest version is %s', self._pkgname,
                          self._arch, self._versions[2])
         return self._versions[2]
+
+    def can_install(self):
+        ''' determine whether the package can be installed '''
+        return self._chroot.can_install(self)
 
     def __lt__(self, other):
         ''' comparison operator for sorting '''

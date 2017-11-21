@@ -34,6 +34,9 @@ def check_pkgbuild(pkgbuild):
                 send_message('%s/%s: needs %s',
                              package.database, package.pkgname,
                              package.latest_version)
+        if not package.can_install():
+            send_message('%s/%s-%s: can not install',
+                         package.database, package.pkgname, package.arch)
         if package.actual_version is None:
             send_message('%s/%s-%s: needs %s',
                          package.database, package.pkgname, package.arch,
@@ -51,13 +54,15 @@ def check_pkgbuild(pkgbuild):
 def checked_main(args):
     ''' the main function '''
     parser = argparse.ArgumentParser(description='a parabola package monkey')
-    parser.add_argument('packages', metavar='Package', nargs='+', action='store', type=str,
+    parser.add_argument('packages', metavar='Package', nargs='*', action='store', type=str,
                         help='the packages to be checked (default: all maintained)')
     parser.add_argument('-O', action='store_true', default=False,
                         help='set offline mode')
     args = parser.parse_args(args=args[1:])
 
     parabola.OFFLINE = args.O
+    if parabola.OFFLINE:
+        logging.warning('operating on offline mode. data may be out of date.')
 
     repo = parabola.Repo(CONFIG.parabola.repo_path)
     repo.update()
