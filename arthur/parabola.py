@@ -12,6 +12,7 @@ from .config import CONFIG
 
 
 _LOG = lambda line: logging.info(line.rstrip())
+OFFLINE = False
 
 
 class Chroot(object):
@@ -61,8 +62,9 @@ class Chroot(object):
 
     def update(self):
         ''' update the chroot '''
-        if self.name in self.cache:
+        if OFFLINE or self.name in self.cache:
             return
+
         self.cache.append(self.name)
 
         try:
@@ -98,6 +100,9 @@ class Repo(object):
 
     def update(self):
         ''' update the repo '''
+        if OFFLINE:
+            return
+
         self._git.pull()
 
     def get_pkgbuild(self, pkgbuild):
@@ -225,6 +230,7 @@ class Version(object):
 
     def __init__(self, version, foreign=False):
         ''' constructor '''
+        logging.info('constructing version from `%s`', version)
         self._full_version = version
         self._foreign = foreign
 
@@ -308,6 +314,9 @@ class VersionMaster(object):
     @classmethod
     def get_latest_version(cls, package):
         ''' try and fetch the latest version for a given package '''
+        if OFFLINE:
+            return None
+
         match = next((key for key in cls._fetch if re.match(key, package.pkgname)), None)
         if match is None:
             return None
