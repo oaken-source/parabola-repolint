@@ -1,0 +1,15 @@
+
+general:
+  loglevel: WARNING
+
+parabola:
+  maintainer: John Doe <john.doe@example.com>
+  repo_path: /path/to/abslibre
+  pacman_conf_path: /path/to/arthur/data
+  arches: ['x86_64', 'i686', 'armv7h']
+  native_arch: x86_64
+
+notification:
+  telegram:
+    token: "<token>"
+    chat_id: "<chat_id>"
