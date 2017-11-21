@@ -15,9 +15,6 @@ _MESSAGES = []
 
 def send_message(msg, *args):
     ''' sends a message via telegram to the configured ChatId '''
-    if _BOT is None:
-        return
-
     if args:
         msg = msg % args
 
@@ -26,4 +23,6 @@ def send_message(msg, *args):
 
     _MESSAGES.append(msg)
     logging.warning(msg)
-    _BOT.send_message(CONFIG.notification.telegram.chat_id, msg)
+
+    if _BOT is not None:
+        _BOT.send_message(CONFIG.notification.telegram.chat_id, msg)
