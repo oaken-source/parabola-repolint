@@ -182,6 +182,7 @@ class Package(object):
             CONFIG.parabola.native_arch if self._arch == 'any' else self._arch,
             self._database
         )
+        self._chroot.update()
 
     @property
     def pkgname(self):
@@ -207,7 +208,6 @@ class Package(object):
     def actual_version(self):
         ''' produce the version of the package currently in the database '''
         if self._versions[1] is None:
-            self._chroot.update()
             self._versions[1] = self._chroot.get_version_of(
                 '%s/%s' % (self._database, self._pkgname)
             )
