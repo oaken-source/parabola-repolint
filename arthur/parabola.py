@@ -6,110 +6,146 @@ import logging
 import re
 import os
 import sh
-from pkg_resources import parse_version
-
-from .config import CONFIG
 
 
-_LOG = lambda line: logging.info(line.rstrip())
-OFFLINE = False
+class Package(object):
+    ''' represent a parabola Package '''
 
-
-class Chroot(object):
-    ''' represent a parabola build chroot '''
-
-    cache = []
-
-    def __init__(self, arch, database):
+    def __init__(self, pkgbuild, name, version):
         ''' constructor '''
-        logging.info('creating chroot for %s-%s', database, arch)
-        self._arch = arch
-        self._database = database
+        self._pkgbuild = pkgbuild
+        self._name = name
+        self._version = version
+        logging.debug('creating package for %s-%s', name, version)
 
-        self._name = '%s-%s' % (database, arch)
-        pacman_conf = os.path.join(
-            CONFIG.parabola.pacman_conf_path,
-            'pacman.conf.%s.%s' % (database, arch)
-        )
+        self._arches = []
 
-        if not os.path.exists(pacman_conf):
-            self._name = 'default-%s' % arch
-            pacman_conf = os.path.join(
-                CONFIG.parabola.pacman_conf_path,
-                'pacman.conf.default.%s' % arch
-            )
-
-        logging.info('  name: %s', self._name)
-        self._librechroot = sh.sudo.librechroot.bake(
-            A=self._arch,
-            C=pacman_conf,
-            n=self._name,
-        )
-        self._pacman = self._librechroot.run.pacman.bake()
-        logging.info('  lbrechroot: %s', self._librechroot)
-        logging.info('  pacman:     %s', self._pacman)
-
-    @property
-    def arch(self):
-        ''' produce the arch of the chroot '''
-        return self._arch
-
-    @property
-    def database(self):
-        ''' produce the database of the choot '''
-        return self._database
+    def add_arch(self, arch):
+        ''' add a built arch to the package '''
+        self._arches.append(arch)
 
     @property
     def name(self):
-        ''' produce the name of the chroot '''
+        ''' produce the name of the package '''
         return self._name
 
-    def update(self):
-        ''' update the chroot '''
-        if OFFLINE:
-            return
+    @property
+    def longname(self):
+        ''' produce the long name of the package, consisting of name and version '''
+        return '%s-%s' % (self._name, self._version)
 
-        logging.info('chroot %s: requesting update', self)
-        if self.name in self.cache:
-            logging.info('  already in cache, skipping')
-            return
-        self.cache.append(self.name)
-
-        try:
-            self._librechroot('make')
-        except sh.ErrorReturnCode_134:
-            logging.warning('chroot %s: create failed, attempting fix', self)
-            # workaround for failing locale-gen on arm chroots
-            rootrun = self._librechroot.bake('-l', 'root', 'run')
-            rootrun('gunzip', '--keep', '/usr/share/i18n/charmaps/UTF-8.gz')
-            rootrun('locale-gen')
-            rootrun('mkdir', '-p', '/repo')
-            rootrun('touch', '/repo/repo.db')
-            self._librechroot('update')
-
-        self._librechroot('clean-repo')
-        self._librechroot('update')
-
-    def get_version_of(self, pkgname):
-        ''' produce the version number of the given package '''
-        logging.info('chroot %s: requested version of %s', self, pkgname)
-        try:
-            return Version(self._pacman('-Spdd', '--print-format', '%v', pkgname).rstrip())
-        except sh.ErrorReturnCode_1:
-            return None
-
-    def can_install(self, package):
-        ''' determine whether the given package can be installed '''
-        logging.info('chroot %s: checking install of package %s', self, package)
-        try:
-            self._pacman('-Sp', '%s/%s' % (package.database, package.pkgname))
-            return True
-        except sh.ErrorReturnCode_1:
-            return False
+    @property
+    def arches(self):
+        ''' produce the list of arches of the package '''
+        return self._arches
 
     def __repr__(self):
         ''' produce a string representation '''
+        return 'Package::%s/%s-%s' % (self._pkgbuild.repodb.name, self._name, self._version)
+
+
+class Pkgbuild(object):
+    ''' represent a parabola PKGBUILD '''
+
+    def __init__(self, repodb, name):
+        ''' constructor '''
+        self._repodb = repodb
+        self._name = name
+        self._path = os.path.join(repodb.path, name)
+        logging.debug('creating PKGBUILD "%s" at %s', name, self._path)
+
+        self._packages = {}
+
+    def load_packages(self):
+        ''' load the packages from the PKGBUILD '''
+        for line in sh.makepkg('--packagelist', _cwd=self._path).split():
+            match = re.match(r'^(.*)-([^-]*-[^-]*)-([^-]*)$', line)
+
+            name = match.group(1)
+            version = match.group(2)
+            arch = match.group(3)
+
+            if name not in self._packages:
+                self._packages[name] = Package(self, name, version)
+            self._packages[name].add_arch(arch)
+
+    @property
+    def repodb(self):
+        ''' produce the repodb of the pkgbuild '''
+        return self._repodb
+
+    @property
+    def name(self):
+        ''' produce the name of the PKGBUILD '''
         return self._name
+
+    @property
+    def packages(self):
+        ''' produce the list of packages in this pkgbuild '''
+        return self._packages.values()
+
+    def __repr__(self):
+        ''' produce a string representation '''
+        return 'PKGBUILD@%s' % self._path
+
+
+class RepoDb(object):
+    ''' represent a database in the parabola package repository '''
+
+    def __init__(self, repo, name):
+        ''' constructor '''
+        self._repo = repo
+        self._name = name
+        self._path = os.path.join(repo.path, name)
+        logging.debug('creating RepoDb "%s" at %s', self._name, self._path)
+
+        self._pkgbuilds = {}
+        self._package_index = {}
+
+    def load_pkgbuilds(self):
+        ''' load all PKGBUILDs from the repo '''
+        logging.debug('loading pkgbuilds from %s', self)
+        for name in os.listdir(self._path):
+            try:
+                self._pkgbuilds[name] = Pkgbuild(self, name)
+            except sh.ErrorReturnCode:
+                logging.exception('no valid PKGBUILD at %s/%s', self._path, name)
+
+    def load_packages(self):
+        ''' load all packages from PKGBUILDs in the repo '''
+        for pkgbuild in self._pkgbuilds.values():
+            try:
+                pkgbuild.load_packages()
+            except sh.ErrorReturnCode:
+                logging.exception('invalid pkgbuild at %s', pkgbuild)
+
+        for pkgbuild in self._pkgbuilds.values():
+            for package in pkgbuild.packages:
+                self._package_index[package.longname] = package
+
+    @property
+    def name(self):
+        ''' produce the name of the repodb '''
+        return self._name
+
+    @property
+    def path(self):
+        ''' produce the path to the repodb '''
+        return self._path
+
+    @property
+    def pkgbuilds(self):
+        ''' produce the list of pkgbuilds in this repo '''
+        return self._pkgbuilds.values()
+
+    @property
+    def packages(self):
+        ''' produce the list of packages in this repo '''
+        return self._package_index.values()
+
+    def __repr__(self):
+        ''' produce a string representation '''
+        return 'RepoDb@%s' % self._path
 
 
 class Repo(object):
@@ -117,273 +153,49 @@ class Repo(object):
 
     def __init__(self, path):
         ''' constructor '''
-        logging.info('creating repo at %s', path)
-
         self._path = path
-        self._git = sh.git.bake(_cwd=path)
-        self._grep = sh.grep.bake('-lR', _cwd=path)
-        logging.info('  git:  %s', self._git)
-        logging.info('  grep: %s', self._grep)
+        logging.debug('creating Repo at %s', self._path)
 
-    def update(self):
-        ''' update the repo '''
-        if OFFLINE:
-            return
+        self._repodbs = {}
+        self._package_index = {}
 
-        logging.info('%s: attempting repo update', self._path)
-        self._git.pull()
+        try:
+            sh.git.pull(_cwd=path)
+        except sh.ErrorReturnCode:
+            logging.exception('failed to update repository at %s', path)
 
-    def get_pkgbuild(self, pkgbuild):
-        ''' get the pkgbuild of the given name '''
-        logging.info('%s: attempting to get pkgbuild %s', self._path, pkgbuild)
-        return Pkgbuild(os.path.join(self._path, pkgbuild, 'PKGBUILD'))
+    def load_pkgbuilds(self, repodbs):
+        ''' load all PKGBUILDs from the selected repos '''
+        logging.debug('loading pkgbuilds from %s', repodbs)
+        for repodb in repodbs:
+            self._repodbs[repodb] = RepoDb(self, repodb)
+            self._repodbs[repodb].load_pkgbuilds()
 
-    def get_maintained_by(self, maintainer):
-        ''' get the pkgbuilds maintained by the given maintainer '''
-        logging.info('%s: attempting to packages by %s', self._path, maintainer)
-        for pkgbuild in self._grep('# Maintainer: %s' % maintainer).split():
-            yield Pkgbuild(os.path.join(self._path, pkgbuild))
+    def load_packages(self):
+        ''' build an index of all packages '''
+        logging.debug('loading all packages from %s', self._repodbs.values())
+        for repodb in self._repodbs.values():
+            repodb.load_packages()
 
-    def __repr__(self):
-        ''' produce a string representation '''
+        for repodb in self._repodbs.values():
+            for pkgbuild in repodb.pkgbuilds:
+                for package in pkgbuild.packages:
+                    self._package_index[package.longname] = package
+
+    @property
+    def path(self):
+        ''' produce the path to the repo '''
         return self._path
 
-
-class Pkgbuild(object):
-    ''' represent a parabola PKGBUILD '''
-
-    def __init__(self, path):
-        ''' constructor '''
-        logging.info('creating pkgbuild from %s', path)
-
-        self._path = path
-        self._database = os.path.basename(os.path.dirname(os.path.dirname(path)))
-        self._pkgbase = os.path.basename(os.path.dirname(path))
-        self._makepkg = sh.makepkg.bake(_cwd=os.path.dirname(path))
-
-        logging.info('  makepkg: %s', self._makepkg)
-
     @property
-    def pkgbase(self):
-        ''' produce the pkgbase of the package '''
-        return self._pkgbase
+    def packages(self):
+        ''' produce the list of all packages in the repo '''
+        return self._package_index.values()
 
-    @property
-    def database(self):
-        ''' produce the database of the package '''
-        return self._database
-
-    def get_packages(self):
-        ''' get the packages contained in the pkgbuild '''
-        logging.info('%s: attempting to produce list of packages', self)
-        for package in self._makepkg('--packagelist').split():
-            yield Package(package, self._database)
-
-    def __lt__(self, other):
-        ''' comparison operator for sorting '''
-        return repr(self) < repr(other)
+    def __getitem__(self, key):
+        ''' return the requested repodb '''
+        return self._repodbs.__getitem__(key)
 
     def __repr__(self):
         ''' produce a string representation '''
-        return self._path
-
-
-class Package(object):
-    ''' represent a parabola package '''
-
-    def __init__(self, package, database):
-        ''' constructor '''
-        logging.info('creating package for %s/%s', database, package)
-
-        self._fullname = package
-        self._database = database
-
-        match = re.match(r'^(.*)-([^-]*-[^-]*)-([^-]*)$', package)
-        if match is None:
-            raise ValueError('package %s is not valid' % package)
-        self._pkgname = match.group(1)
-        self._versions = [Version(match.group(2)), None, None]
-        self._arch = match.group(3)
-
-        logging.info('  pkgname: %s', self._pkgname)
-        logging.info('  version: %s', self._versions[0])
-        logging.info('  arch:    %s', self._arch)
-
-        self._chroot = Chroot(
-            CONFIG.parabola.native_arch if self._arch == 'any' else self._arch,
-            self._database
-        )
-        self._chroot.update()
-
-    @property
-    def pkgname(self):
-        ''' produce the name of the package '''
-        return self._pkgname
-
-    @property
-    def arch(self):
-        ''' produce the arch of the package '''
-        return self._arch
-
-    @property
-    def database(self):
-        ''' produce the database of the package '''
-        return self._database
-
-    @property
-    def target_version(self):
-        ''' produce the version of the package currently in the PKGBUILD '''
-        return self._versions[0]
-
-    @property
-    def actual_version(self):
-        ''' produce the version of the package currently in the database '''
-        if self._versions[1] is None:
-            self._versions[1] = self._chroot.get_version_of(
-                '%s/%s' % (self._database, self._pkgname)
-            )
-            logging.info('%s-%s: actual version is %s', self._pkgname,
-                         self._arch, self._versions[1])
-        return self._versions[1]
-
-    @property
-    def latest_version(self):
-        ''' produce the latest version available of the package from upstream '''
-        if self._versions[2] is None:
-            self._versions[2] = VersionMaster.get_latest_version(self)
-            logging.info('%s-%s: latest version is %s', self._pkgname,
-                         self._arch, self._versions[2])
-        return self._versions[2]
-
-    def can_install(self):
-        ''' determine whether the package can be installed '''
-        return self._chroot.can_install(self)
-
-    def __lt__(self, other):
-        ''' comparison operator for sorting '''
-        return repr(self) < repr(other)
-
-    def __repr__(self):
-        ''' produce a string representation '''
-        return self._fullname
-
-
-class Version(object):
-    ''' represent a package version '''
-
-    def __init__(self, version, foreign=False):
-        ''' constructor '''
-        logging.info('constructing version from `%s`', version)
-
-        self._full_version = version
-        self._foreign = foreign
-
-        self._pkgver = version
-        self._pkgrel = None
-        self._epoch = None
-
-        if not foreign:
-            self._pkgver, self._pkgrel = version.split('-')
-        if not foreign and ':' in self._pkgver:
-            self._epoch, self._pkgver = self._pkgver.split(':')
-
-        self._epoch = parse_version(self._epoch) if self._epoch is not None else None
-        self._pkgver = parse_version(self._pkgver)
-        self._pkgrel = parse_version(self._pkgrel) if self._pkgrel is not None else None
-
-    @property
-    def foreign(self):
-        ''' tell if the version is foreign '''
-        return self._foreign
-
-    @property
-    def epoch(self):
-        ''' produce the package epoch '''
-        return self._epoch
-
-    @property
-    def pkgver(self):
-        ''' produce the package pkgver '''
-        return self._pkgver
-
-    @property
-    def pkgrel(self):
-        ''' produce the package pkgrel '''
-        return self._pkgrel
-
-    def __eq__(self, other):
-        ''' equals operator '''
-        if self.foreign or other.foreign:
-            return self.pkgver == other.pkgver
-
-        return (self.epoch == other.epoch
-                and self.pkgver == other.pkgver
-                and self.pkgrel == other.pkgrel)
-
-    def __gt__(self, other):
-        ''' greater than operator '''
-        if self.foreign or other.foreign:
-            return self.pkgver > other.pkgver
-
-        if self.epoch != other.epoch:
-            return (other.epoch is None or other.epoch is not None
-                    and self.epoch > other.epoch)
-        if self.pkgver != other.pkgver:
-            return self.pkgver > other.pkgver
-        return self.pkgrel > other.pkgrel
-
-    def __lt__(self, other):
-        ''' less than operator '''
-        if self.foreign or other.foreign:
-            return self.pkgver < other.pkgver
-
-        if self.epoch != other.epoch:
-            return (self.epoch is None or other.epoch is not None
-                    and self.epoch < other.epoch)
-        if self.pkgver != other.pkgver:
-            return self.pkgver < other.pkgver
-        return self.pkgrel < other.pkgrel
-
-    def __repr__(self):
-        ''' produce a string representation '''
-        return self._full_version
-
-
-class VersionMaster(object):
-    ''' manage fetching version numbers from upstream '''
-
-    _fetch = {}
-    _cache = {}
-
-    @classmethod
-    def get_latest_version(cls, package):
-        ''' try and fetch the latest version for a given package '''
-        if OFFLINE:
-            return None
-
-        logging.info('attempting to fetch latest version for %s', package)
-
-        match = next((key for key in cls._fetch if re.match(key, package.pkgname)), None)
-        if match is None:
-            return None
-        logging.info('  match is %s', match)
-
-        fetch = cls._fetch[match]
-        if fetch in cls._cache:
-            return cls._cache[fetch]
-        logging.info('  fetch is %s', fetch)
-
-        value = Version(fetch(), True)
-        logging.info('  value is %s', value)
-        cls._cache[fetch] = value
-        return value
-
-    @classmethod
-    def register(cls, regex):
-        ''' register a version callback '''
-        def wrap(func):
-            ''' the wrapper, yo '''
-            cls._fetch[r'^%s$' % regex] = func
-            logging.info('registered version callback for %s', regex)
-            return func
-        return wrap
+        return 'Repo@%s' % self._path
