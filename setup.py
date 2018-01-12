@@ -4,20 +4,20 @@ from setuptools import setup
 
 
 setup(
-    name='arthur',
+    name='parabola-repolint',
     version='0.1',
     maintainer='Andreas Grapnetin',
     maintainer_email='andreas@grapentin.org',
-    url='https://github.com/oaken-source/arthur',
-    description='a parabola package build butler',
+    url='https://github.com/oaken-source/parabola-repolint',
+    description='a parabola package repository lint tool',
     long_description=open(join(dirname(__file__), 'README.rst')).read(),
 
     keywords='parabola packages maintenance',
-    packages=['arthur'],
+    packages=['parabola_repolint'],
 
     entry_points={
         'console_scripts': [
-            'arthur = arthur.__main__:main',
+            'parabola-repolint = parabola_repolint.__main__:main',
         ],
     },
 
@@ -25,6 +25,7 @@ setup(
         'python-telegram-bot',
         'pyyaml',
         'sh',
+        'xdg',
         'lxml',
         'beautifulsoup4',
         'requests',

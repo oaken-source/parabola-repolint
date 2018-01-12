@@ -2,14 +2,15 @@
 config management
 '''
 
+import os
 import logging
+import xdg
 import yaml
 
 
-CONFIG_DEFAULT_PATHS = [
-    './arthur.conf',
-    '/etc/arthur.conf'
-]
+CONFIG_NAME = 'parabola-repolint.conf'
+CONFIG_DEFAULT_DIRS = ['.', xdg.XDG_CONFIG_HOME] + xdg.XDG_CONFIG_DIRS
+CONFIG_DEFAULT_PATHS = [os.path.join(dir, CONFIG_NAME) for dir in CONFIG_DEFAULT_DIRS]
 
 
 class Bunch(dict):
@@ -38,6 +39,7 @@ def _read_configs(configs):
             return _read_config(config)
         except IOError:
             pass
+    raise FileNotFoundError('no valid config found')
 
 
 CONFIG = _read_configs(CONFIG_DEFAULT_PATHS)

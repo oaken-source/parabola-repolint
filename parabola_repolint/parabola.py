@@ -6,6 +6,7 @@ import logging
 import re
 import os
 import sh
+import xdg
 
 
 class Package(object):
@@ -32,7 +33,7 @@ class Package(object):
     @property
     def longname(self):
         ''' produce the long name of the package, consisting of name and version '''
-        return '%s-%s' % (self._name, self._version)
+        return '%s/%s' % (self._pkgbuild.repodb.name, self._name)
 
     @property
     def arches(self):
@@ -55,10 +56,11 @@ class Pkgbuild(object):
         logging.debug('creating PKGBUILD "%s" at %s', name, self._path)
 
         self._packages = {}
+        self._load_packages()
 
-    def load_packages(self):
+    def _load_packages(self):
         ''' load the packages from the PKGBUILD '''
-        for line in sh.makepkg('--packagelist', _cwd=self._path).split():
+        for line in self._packagelist().split():
             match = re.match(r'^(.*)-([^-]*-[^-]*)-([^-]*)$', line)
 
             name = match.group(1)
@@ -68,6 +70,22 @@ class Pkgbuild(object):
             if name not in self._packages:
                 self._packages[name] = Package(self, name, version)
             self._packages[name].add_arch(arch)
+
+    def _packagelist(self):
+        ''' get the packagelist from cache or from the PKGBUILD itself '''
+        cache = os.path.join(xdg.XDG_CACHE_HOME, 'parabola-repolint',
+                             self._repodb.name, self._name)
+
+        if os.path.isfile(cache) and os.path.getmtime(cache) > os.path.getmtime(self._path):
+            with open(cache) as cachefile:
+                return cachefile.read()
+
+        res = sh.makepkg('--packagelist', _cwd=self._path)
+        os.makedirs(os.path.dirname(cache), exist_ok=True)
+
+        with open(cache, 'w') as cachefile:
+            cachefile.write(str(res))
+        return res
 
     @property
     def repodb(self):
@@ -97,27 +115,21 @@ class RepoDb(object):
         self._repo = repo
         self._name = name
         self._path = os.path.join(repo.path, name)
-        logging.debug('creating RepoDb "%s" at %s', self._name, self._path)
+        logging.debug('creating RepoDb "%s" at %s', name, self._path)
 
         self._pkgbuilds = {}
         self._package_index = {}
 
-    def load_pkgbuilds(self):
-        ''' load all PKGBUILDs from the repo '''
+        self._load_packages()
+
+    def _load_packages(self):
+        ''' load all PKGBUILDs and packages from the repo and build an index '''
         logging.debug('loading pkgbuilds from %s', self)
         for name in os.listdir(self._path):
             try:
                 self._pkgbuilds[name] = Pkgbuild(self, name)
             except sh.ErrorReturnCode:
                 logging.exception('no valid PKGBUILD at %s/%s', self._path, name)
-
-    def load_packages(self):
-        ''' load all packages from PKGBUILDs in the repo '''
-        for pkgbuild in self._pkgbuilds.values():
-            try:
-                pkgbuild.load_packages()
-            except sh.ErrorReturnCode:
-                logging.exception('invalid pkgbuild at %s', pkgbuild)
 
         for pkgbuild in self._pkgbuilds.values():
             for package in pkgbuild.packages:
@@ -141,7 +153,7 @@ class RepoDb(object):
     @property
     def packages(self):
         ''' produce the list of packages in this repo '''
-        return self._package_index.values()
+        return self._package_index
 
     def __repr__(self):
         ''' produce a string representation '''
@@ -153,29 +165,20 @@ class Repo(object):
 
     def __init__(self, path):
         ''' constructor '''
+        logging.debug('creating Repo at %s', path)
         self._path = path
-        logging.debug('creating Repo at %s', self._path)
-
         self._repodbs = {}
         self._package_index = {}
 
-        try:
-            sh.git.pull(_cwd=path)
-        except sh.ErrorReturnCode:
-            logging.exception('failed to update repository at %s', path)
+    def update(self):
+        ''' update the repo '''
+        sh.git.pull(_cwd=self._path)
 
-    def load_pkgbuilds(self, repodbs):
-        ''' load all PKGBUILDs from the selected repos '''
-        logging.debug('loading pkgbuilds from %s', repodbs)
+    def build_package_index(self, repodbs):
+        ''' load all needed PKGBUILDS and packages and build an index '''
+        logging.debug('loading packages from %s', repodbs)
         for repodb in repodbs:
             self._repodbs[repodb] = RepoDb(self, repodb)
-            self._repodbs[repodb].load_pkgbuilds()
-
-    def load_packages(self):
-        ''' build an index of all packages '''
-        logging.debug('loading all packages from %s', self._repodbs.values())
-        for repodb in self._repodbs.values():
-            repodb.load_packages()
 
         for repodb in self._repodbs.values():
             for pkgbuild in repodb.pkgbuilds:
@@ -190,7 +193,7 @@ class Repo(object):
     @property
     def packages(self):
         ''' produce the list of all packages in the repo '''
-        return self._package_index.values()
+        return self._package_index
 
     def __getitem__(self, key):
         ''' return the requested repodb '''
@@ -199,3 +202,44 @@ class Repo(object):
     def __repr__(self):
         ''' produce a string representation '''
         return 'Repo@%s' % self._path
+
+
+class Librechroot(object):
+    ''' represent a librechroot '''
+
+    def __init__(self, arch, repodb):
+        ''' constructor '''
+        self._arch = arch
+        self._repodb = repodb
+
+        conf = os.path.join(xdg.XDG_DATA_HOME, 'arthur', 'pacman.conf.%s.%s' % (arch, repodb))
+        os.makedirs(os.path.dirname(conf), exist_ok=True)
+        if not os.path.isfile(conf):
+            sh.cp('/usr/share/pacman/defaults/pacman.conf.%s' % arch, conf)
+            sh.sed('-i', 's/^Architecture.*/Architecture = %s/' % arch, conf)
+            sh.sed('-i', '/#\\[%s\\]/{s/^#//;n;s/^#//}' % repodb, conf)
+
+        self._librechroot = sh.sudo.librechroot.bake(
+            A=arch,
+            C=conf,
+            n='arthur-%s-%s' % (arch, repodb)
+        )
+
+    def update(self):
+        ''' attempt to update the chroot '''
+        self._librechroot.update()
+
+    @property
+    def run(self):
+        ''' run something in the chroot '''
+        return self._librechroot.run
+
+    @property
+    def arch(self):
+        ''' proudce the arch of the chroot '''
+        return self._arch
+
+    @property
+    def repodb(self):
+        ''' produce the target repodb of the chroot '''
+        return self._repodb
