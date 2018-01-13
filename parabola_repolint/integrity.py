@@ -9,21 +9,6 @@ from lxml.html import soupparser
 from .notification import send_message
 
 
-def translate(package):
-    ''' translate a package name from parabola to arch '''
-    translations = {
-        r'^cdrkit': r'cdrtools',
-        r'^(.*)-l10n-(.*)$': r'\1-i18n-\2',
-        r'^iceape(.*)$': r'seamonkey\1',
-        r'^icecat(.*)$': r'firefox-esr\1',
-        r'^icedove(.*)$': r'thunderbird\1',
-        r'^iceweasel(.*)$': r'firefox\1',
-    }
-    for translation in translations.items():
-        package = re.sub(translation[0], translation[1], package)
-    return package
-
-
 _ARCH_VERSION_CACHE = {}
 def get_arch_version(package):
     ''' get the package version of something from the arch repos '''
@@ -81,27 +66,4 @@ class Linter(object):
                     res.append('%s/%s-%s-%s' % (parts[0], parts[1], parts[2], chroot.arch))
         if res:
             send_message('packages without a PKGBUILD: %i' % len(res))
-            logging.warning(res)
-
-    def check_official_arch_pkg_in_pcr(self):
-        ''' check for official arch packages in pcr '''
-        res = [p for p in self._repo['pcr'].packages.values() if
-               get_arch_version(p.name) is not None]
-        if res:
-            send_message('official arch packages in pcr: %i' % len(res))
-            logging.warning(res)
-
-    def check_unofficial_pkg_in_libre(self):
-        ''' check for non-official-arch packages in libre '''
-        additions = [
-            'archlinux32-keyring',
-            'archlinuxarm-keyring',
-            'parabola-keyring',
-            'your-freedom',
-            'your-freedom_emu',
-        ]
-        res = [p for p in self._repo['libre'].packages.values() if
-               get_arch_version(p.name) is None and p.name not in additions]
-        if res:
-            send_message('packages in libre that have no official arch version: %i' % len(res))
             logging.warning(res)
