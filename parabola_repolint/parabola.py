@@ -74,7 +74,7 @@ class Pkgbuild(object):
     def _packagelist(self):
         ''' get the packagelist from cache or from the PKGBUILD itself '''
         cache = os.path.join(xdg.XDG_CACHE_HOME, 'parabola-repolint',
-                             self._repodb.name, self._name)
+                             'packagelist', self._repodb.name, self._name)
 
         if os.path.isfile(cache) and os.path.getmtime(cache) > os.path.getmtime(self._path):
             with open(cache) as cachefile:
@@ -202,44 +202,3 @@ class Repo(object):
     def __repr__(self):
         ''' produce a string representation '''
         return 'Repo@%s' % self._path
-
-
-class Librechroot(object):
-    ''' represent a librechroot '''
-
-    def __init__(self, arch, repodb):
-        ''' constructor '''
-        self._arch = arch
-        self._repodb = repodb
-
-        conf = os.path.join(xdg.XDG_DATA_HOME, 'arthur', 'pacman.conf.%s.%s' % (arch, repodb))
-        os.makedirs(os.path.dirname(conf), exist_ok=True)
-        if not os.path.isfile(conf):
-            sh.cp('/usr/share/pacman/defaults/pacman.conf.%s' % arch, conf)
-            sh.sed('-i', 's/^Architecture.*/Architecture = %s/' % arch, conf)
-            sh.sed('-i', '/#\\[%s\\]/{s/^#//;n;s/^#//}' % repodb, conf)
-
-        self._librechroot = sh.sudo.librechroot.bake(
-            A=arch,
-            C=conf,
-            n='arthur-%s-%s' % (arch, repodb)
-        )
-
-    def update(self):
-        ''' attempt to update the chroot '''
-        self._librechroot.update()
-
-    @property
-    def run(self):
-        ''' run something in the chroot '''
-        return self._librechroot.run
-
-    @property
-    def arch(self):
-        ''' proudce the arch of the chroot '''
-        return self._arch
-
-    @property
-    def repodb(self):
-        ''' produce the target repodb of the chroot '''
-        return self._repodb

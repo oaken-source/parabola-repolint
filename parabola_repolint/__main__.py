@@ -15,7 +15,8 @@ logging.getLogger('sh.command').setLevel(logging.WARNING)
 import argparse
 import sys
 import sh
-from .parabola import Repo, Librechroot
+from .parabola import Repo
+from .pacman import PacmanCache
 from .notification import send_message
 from .integrity import Linter
 
@@ -46,18 +47,19 @@ def checked_main(args):
             logging.exception('failed to update repository %s', repo)
     repo.build_package_index(CONFIG.parabola.repodbs)
 
-    chroots = {}
-    for arch in CONFIG.parabola.arches:
-        for repodb in CONFIG.parabola.repodbs:
-            chroot = Librechroot(arch, repodb)
+    caches = {}
+    for repodb in CONFIG.parabola.repodbs + ['core', 'extra', 'community']:
+        for arch in CONFIG.parabola.arches:
+            cache = PacmanCache(arch, repodb)
             if not args.noupdate:
                 try:
-                    chroot.update()
+                    cache.update()
                 except sh.ErrorReturnCode:
-                    logging.exception('failed to update chroot %s', chroot)
-            chroots[(arch, repodb)] = chroot
+                    logging.exception('failed to update pacman cache %s', cache)
+            cache.load_packages()
+            caches[(repodb, arch)] = cache
 
-    linter = Linter(repo, CONFIG.parabola.arches, chroots)
+    linter = Linter(repo, caches)
     linter.perform_checks(args.checks)
 
 

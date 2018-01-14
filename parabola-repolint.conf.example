@@ -8,6 +8,12 @@ parabola:
   reposdbs: ['libre', 'pcr', 'nonprism']
   arches: ['x86_64', 'i686', 'armv7h']
 
+mirrors:
+  parabola: http://mirror.example.com
+  archlinux: http://mirror.example.com
+  archlinux32: http://mirror.example.com
+  archlinuxarm: http://mirror.example.com
+
 notification:
   telegram:
     token: "<token>"
