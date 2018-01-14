@@ -34,8 +34,11 @@ class Linter(object):
 
     def check_pkg_unsupported_arches(self):
         ''' check for packages with unsupported arch '''
-        res = [p for p in self._repo.packages.values() if
-               any(i != 'any' and i not in CONFIG.parabola.arches for i in p.arches)]
+        res = []
+        for pkg in self._repo.packages.values():
+            for arch in pkg.arches:
+                if arch != 'any' and arch not in CONFIG.parabola.arches:
+                    res.append('%s-%s-%s' % (pkg.longname, pkg.version, arch))
         if res:
             send_message('packages with unsupported arches: %i' % len(res))
             logging.warning(res)

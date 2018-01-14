@@ -40,6 +40,11 @@ class Package(object):
         ''' produce the list of arches of the package '''
         return self._arches
 
+    @property
+    def version(self):
+        ''' produce the version of the package '''
+        return self._version
+
     def __repr__(self):
         ''' produce a string representation '''
         return 'Package::%s/%s-%s' % (self._pkgbuild.repodb.name, self._name, self._version)
