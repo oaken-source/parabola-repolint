@@ -5,6 +5,7 @@ helpers for queries to pacman caches
 import os
 import sh
 import xdg
+from pkg_resources import parse_version
 from .config import CONFIG
 
 
@@ -59,7 +60,7 @@ Include = %s
         ''' load the list of packages from the repo '''
         for line in self._pacman('-Sl', self._repodb).strip().split('\n'):
             _, pkgname, version = line.split(' ')
-            self._packages[pkgname] = (pkgname, version)
+            self._packages[pkgname] = (pkgname, parse_version(version))
 
     @property
     def packages(self):

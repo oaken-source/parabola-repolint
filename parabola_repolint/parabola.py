@@ -7,6 +7,7 @@ import re
 import os
 import sh
 import xdg
+from pkg_resources import parse_version
 
 
 class Package(object):
@@ -16,8 +17,8 @@ class Package(object):
         ''' constructor '''
         self._pkgbuild = pkgbuild
         self._name = name
-        self._version = version
-        logging.debug('creating package for %s-%s', name, version)
+        self._version = parse_version(version)
+        logging.debug('creating package for %s-%s', name, self._version)
 
         self._arches = []
 

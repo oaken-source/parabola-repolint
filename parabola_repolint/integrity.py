@@ -54,3 +54,17 @@ class Linter(object):
         if res:
             send_message('packages with no associated PKGBUILD: %i' % len(res))
             logging.warning(res)
+
+    def check_pkg_needs_rebuild(self):
+        ''' check for packages that need rebuilds '''
+        res = []
+        for repodb in CONFIG.parabola.repodbs:
+            for pkg in self._repo[repodb].packages.values():
+                for arch in CONFIG.parabola.arches:
+                    packages = self._caches[(repodb, arch)].packages
+                    if (pkg.name not in packages.keys()
+                            or pkg.version < packages[pkg.name][1]):
+                        res.append('%s-%s-%s' % (pkg.longname, pkg.version, arch))
+        if res:
+            send_message('packages that need rebuilds: %i' % len(res))
+            logging.warning(res)
