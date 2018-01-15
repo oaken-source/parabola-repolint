@@ -60,7 +60,7 @@ def checked_main(args):
             caches[(repodb, arch)] = cache
 
     linter = Linter(repo, caches)
-    linter.perform_checks(args.checks)
+    linter.perform_checks(sorted(args.checks))
 
 
 def main(args=None):

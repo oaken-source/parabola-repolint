@@ -18,6 +18,10 @@ class Package(object):
         self._pkgbuild = pkgbuild
         self._name = name
         self._version = parse_version(version)
+        short_version = version.split('-')[0]
+        if ':' in short_version:
+            short_version = short_version.split(':')[1]
+        self._short_version = parse_version(short_version)
         logging.debug('creating package for %s-%s', name, self._version)
 
         self._arches = []
@@ -45,6 +49,11 @@ class Package(object):
     def version(self):
         ''' produce the version of the package '''
         return self._version
+
+    @property
+    def short_version(self):
+        ''' produce the version of the package, without the pkgrel '''
+        return self._short_version
 
     def __repr__(self):
         ''' produce a string representation '''
