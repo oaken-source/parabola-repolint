@@ -75,7 +75,7 @@ class Linter(object):
                 for arch in arches:
                     packages = self._caches[(repodb, arch)].packages
                     if (pkg.name not in packages.keys()
-                            or pkg.version < packages[pkg.name][1]):
+                            or pkg.version != packages[pkg.name][2]):
                         res.append('%s-%s-%s' % (pkg.longname, pkg.version, arch))
         if res:
             send_message('packages that need rebuilds: %i' % len(res))

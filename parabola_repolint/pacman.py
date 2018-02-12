@@ -60,7 +60,9 @@ Include = %s
         ''' load the list of packages from the repo '''
         for line in self._pacman('-Sl', self._repodb).strip().split('\n'):
             _, pkgname, version = line.split(' ')
-            self._packages[pkgname] = (pkgname, parse_version(version.split('-')[0]))
+            self._packages[pkgname] = (pkgname,
+                                       parse_version(version.split('-')[0]),
+                                       parse_version(version))
 
     @property
     def packages(self):
