@@ -73,6 +73,8 @@ class Linter(object):
             for pkg in self._repo[repodb].packages.values():
                 arches = CONFIG.parabola.arches if 'any' in pkg.arches else pkg.arches
                 for arch in arches:
+                    if arch not in CONFIG.parabola.arches:
+                        continue
                     packages = self._caches[(repodb, arch)].packages
                     if (pkg.name not in packages.keys()
                             or pkg.version != packages[pkg.name][2]):
@@ -87,6 +89,8 @@ class Linter(object):
         for pkg in self._repo.packages.values():
             for repodb in ['core', 'extra', 'community']:
                 for arch in ['x86_64'] if 'any' in pkg.arches else pkg.arches:
+                    if arch not in CONFIG.parabola.arches:
+                        continue
                     if pkg.name in self._caches[(repodb, arch)].packages:
                         ver = self._caches[(repodb, arch)].packages[pkg.name][1]
                         if pkg.short_version < ver:
