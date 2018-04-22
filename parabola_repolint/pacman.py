@@ -4,7 +4,7 @@ helpers for queries to pacman caches
 
 import os
 import sh
-import xdg
+from xdg import BaseDirectory
 from pkg_resources import parse_version
 from .config import CONFIG
 
@@ -17,7 +17,7 @@ class PacmanCache(object):
         self._arch = arch
         self._repodb = repodb
 
-        self._cache_dir = os.path.join(xdg.BaseDirectory.xdg_cache_home, 'parabola-repolint',
+        self._cache_dir = os.path.join(BaseDirectory.xdg_cache_home, 'parabola-repolint',
                                        'pacman', arch, repodb)
         os.makedirs(self._cache_dir, exist_ok=True)
 

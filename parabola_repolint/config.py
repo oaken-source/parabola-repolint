@@ -4,12 +4,12 @@ config management
 
 import os
 import logging
-import xdg
+from xdg import BaseDirectory
 import yaml
 
 
 CONFIG_NAME = 'parabola-repolint.conf'
-CONFIG_DEFAULT_DIRS = ['.',  xdg.BaseDirectory.xdg_config_home] +  xdg.BaseDirectory.xdg_config_dirs
+CONFIG_DEFAULT_DIRS = ['.',  BaseDirectory.xdg_config_home] +  BaseDirectory.xdg_config_dirs
 CONFIG_DEFAULT_PATHS = [os.path.join(dir, CONFIG_NAME) for dir in CONFIG_DEFAULT_DIRS]
 
 

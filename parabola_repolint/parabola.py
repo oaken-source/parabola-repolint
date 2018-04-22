@@ -6,7 +6,7 @@ import logging
 import re
 import os
 import sh
-import xdg
+from xdg import BaseDirectory
 from pkg_resources import parse_version
 
 
@@ -88,7 +88,7 @@ class Pkgbuild(object):
 
     def _packagelist(self):
         ''' get the packagelist from cache or from the PKGBUILD itself '''
-        cache = os.path.join(xdg.BaseDirectory.xdg_cache_home, 'parabola-repolint',
+        cache = os.path.join(BaseDirectory.xdg_cache_home, 'parabola-repolint',
                              'packagelist', self._repodb.name, self._name)
 
         if os.path.isfile(cache) and os.path.getmtime(cache) > os.path.getmtime(self._path):
