@@ -25,7 +25,7 @@ setup(
         'python-telegram-bot',
         'pyyaml',
         'sh',
-        'xdg',
+        'pyxdg',
         'lxml',
         'beautifulsoup4',
         'requests',
