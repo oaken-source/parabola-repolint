@@ -4,7 +4,11 @@ entry point of parabloa-repolint - setup logging, parse arguments, handle except
 
 # pylint: disable=wrong-import-position,wrong-import-order
 import logging
-logging.basicConfig(format='[%(asctime)s][%(levelname)s] %(message)s', level=logging.INFO)
+import sys
+logging.basicConfig(
+    format='[%(asctime)s][%(levelname)s] %(message)s',
+    level=logging.INFO,
+    stream=sys.stderr)
 
 from .config import CONFIG
 
@@ -12,6 +16,8 @@ logging.info('setting root loglevel to %s', CONFIG.general.loglevel)
 logging.getLogger('root').setLevel(getattr(logging, CONFIG.general.loglevel, 0))
 logging.getLogger('sh.command').setLevel(logging.WARNING)
 
+import datetime
+import tempfile
 import argparse
 import sys
 import sh
@@ -60,7 +66,25 @@ def checked_main(args):
             caches[(repodb, arch)] = cache
 
     linter = Linter(repo, caches)
-    linter.perform_checks(sorted(args.checks))
+    results = linter.perform_checks(sorted(args.checks))
+
+    backlog = '''
+This is an auto-generated list of issues in the parabola package repository.
+Be aware that false positives in these lists are quite probable.
+
+Once a package is fixed, please remove it from the list below, to avoid
+unnecessary duplicated work.
+
+List generated:  %s
+
+
+%s
+''' % (datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), '\n\n'.join(results))
+
+    if CONFIG.notification.etherpad.url is not None:
+        with tempfile.NamedTemporaryFile() as f:
+            f.write(backlog.encode('utf-8'))
+            sh.etherpad_import_cli(CONFIG.notification.etherpad.url, f.name)
 
 
 def main(args=None):

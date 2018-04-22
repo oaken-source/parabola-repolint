@@ -34,6 +34,7 @@ class Linter(object):
 
     def perform_checks(self, checks):
         ''' perform the list of checks '''
+        results = []
         for check in checks:
             try:
                 func = getattr(self, check)
@@ -41,7 +42,10 @@ class Linter(object):
                 logging.exception('unrecognized check %s', check)
                 continue
             logging.info(func.__doc__.strip())
-            func()
+            out = func()
+            if out is not None:
+                results.append(out)
+        return results
 
     def check_pkg_unsupported_arches(self):
         ''' check for packages with unsupported arch '''
@@ -51,8 +55,9 @@ class Linter(object):
                 if arch != 'any' and arch not in CONFIG.parabola.arches:
                     res.append('%s-%s-%s' % (pkg.longname, pkg.version, arch))
         if res:
-            send_message('packages with unsupported arches: %i' % len(res))
+            send_message('%i packages with unsupported arches' % len(res))
             logging.warning(sorted(res))
+            return 'packages with unsupported arches:\n    ' + '\n    '.join(sorted(res))
 
     def check_pkg_without_pkgbuild(self):
         ''' check for packages with no associated PKGBUILD '''
@@ -63,8 +68,9 @@ class Linter(object):
                     if '%s/%s' % (repodb, pkg[0]) not in self._repo[repodb].packages.keys():
                         res.append('%s/%s-%s-%s' % (repodb, pkg[0], pkg[1], arch))
         if res:
-            send_message('packages with no associated PKGBUILD: %i' % len(res))
+            send_message('%i packages with no associated PKGBUILD' % len(res))
             logging.warning(sorted(res))
+            return 'packages with no associated PKGBUILD:\n    ' + '\n    '.join(sorted(res))
 
     def check_pkg_needs_rebuild(self):
         ''' check for packages that need rebuilds '''
@@ -80,8 +86,9 @@ class Linter(object):
                             or pkg.version != packages[pkg.name][2]):
                         res.append('%s-%s-%s' % (pkg.longname, pkg.version, arch))
         if res:
-            send_message('packages that need rebuilds: %i' % len(res))
+            send_message('%i packages that need rebuilds' % len(res))
             logging.warning(sorted(res))
+            return 'packages that need rebuilds:\n    ' + '\n    '.join(sorted(res))
 
     def check_pkg_outdated(self):
         ''' check for packages with newer versions in core/extra/community/aur '''
@@ -96,9 +103,10 @@ class Linter(object):
                         if pkg.short_version < ver:
                             res.append('%s-%s-%s (%s:%s)' % (pkg.longname, pkg.version,
                                                              arch, repodb, ver))
-            aurver = get_aurver(pkg.name)
-            if aurver is not None and pkg.short_version < aurver:
-                res.append('%s-%s (AUR:%s)' % (pkg.longname, pkg.version, aurver))
+            #aurver = get_aurver(pkg.name)
+            #if aurver is not None and pkg.short_version < aurver:
+            #    res.append('%s-%s (AUR:%s)' % (pkg.longname, pkg.version, aurver))
         if res:
-            send_message('packages with newer versions: %i' % len(res))
+            send_message('%i packages with newer versions' % len(res))
             logging.warning(sorted(res))
+            return 'packages with newer versions:\n    ' + '\n    '.join(sorted(res))
