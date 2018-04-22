@@ -17,7 +17,7 @@ class PacmanCache(object):
         self._arch = arch
         self._repodb = repodb
 
-        self._cache_dir = os.path.join(xdg.XDG_CACHE_HOME, 'parabola-repolint',
+        self._cache_dir = os.path.join(xdg.BaseDirectory.xdg_cache_home, 'parabola-repolint',
                                        'pacman', arch, repodb)
         os.makedirs(self._cache_dir, exist_ok=True)
 

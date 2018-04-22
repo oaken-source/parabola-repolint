@@ -9,7 +9,7 @@ import yaml
 
 
 CONFIG_NAME = 'parabola-repolint.conf'
-CONFIG_DEFAULT_DIRS = ['.', xdg.XDG_CONFIG_HOME] + xdg.XDG_CONFIG_DIRS
+CONFIG_DEFAULT_DIRS = ['.',  xdg.BaseDirectory.xdg_config_home] +  xdg.BaseDirectory.xdg_config_dirs
 CONFIG_DEFAULT_PATHS = [os.path.join(dir, CONFIG_NAME) for dir in CONFIG_DEFAULT_DIRS]
 
 
