@@ -58,9 +58,10 @@ class Linter(object):
             send_message('%i packages with unsupported arches' % len(res))
             logging.warning(sorted(res))
             return 'packages with unsupported arches:\n    ' + '\n    '.join(sorted(res))
+        return None
 
-    def check_pkg_without_pkgbuild(self):
-        ''' check for packages with no associated PKGBUILD '''
+    def check_pkg_valid_pkgbuild(self):
+        ''' check for packages with no associated valid PKGBUILD '''
         res = []
         for repodb in CONFIG.parabola.repodbs:
             for arch in CONFIG.parabola.arches:
@@ -68,9 +69,10 @@ class Linter(object):
                     if '%s/%s' % (repodb, pkg[0]) not in self._repo[repodb].packages.keys():
                         res.append('%s/%s-%s-%s' % (repodb, pkg[0], pkg[1], arch))
         if res:
-            send_message('%i packages with no associated PKGBUILD' % len(res))
+            send_message('%i packages with no associated valid PKGBUILD' % len(res))
             logging.warning(sorted(res))
-            return 'packages with no associated PKGBUILD:\n    ' + '\n    '.join(sorted(res))
+            return 'packages with no associated valid PKGBUILD:\n    ' + '\n    '.join(sorted(res))
+        return None
 
     def check_pkg_needs_rebuild(self):
         ''' check for packages that need rebuilds '''
@@ -89,6 +91,7 @@ class Linter(object):
             send_message('%i packages that need rebuilds' % len(res))
             logging.warning(sorted(res))
             return 'packages that need rebuilds:\n    ' + '\n    '.join(sorted(res))
+        return None
 
     def check_pkg_outdated(self):
         ''' check for packages with newer versions in core/extra/community/aur '''
@@ -110,3 +113,15 @@ class Linter(object):
             send_message('%i packages with newer versions' % len(res))
             logging.warning(sorted(res))
             return 'packages with newer versions:\n    ' + '\n    '.join(sorted(res))
+        return None
+
+    def check_pkg_invalid_pkgbuild(self):
+        ''' check for packages that makepkg complains about '''
+        res = []
+        for repodb in self._repo.repodbs:
+            res.extend(repodb.broken_pkgbuilds)
+        if res:
+            send_message('%i broken PKGBUILDs' % len(res))
+            logging.warning(sorted(res))
+            return 'broken PKGBUILDs:\n    ' + '\n    '.join(sorted(res))
+        return None

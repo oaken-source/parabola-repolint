@@ -19,7 +19,6 @@ logging.getLogger('sh.command').setLevel(logging.WARNING)
 import datetime
 import tempfile
 import argparse
-import sys
 import sh
 from .parabola import Repo
 from .pacman import PacmanCache

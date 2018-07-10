@@ -76,7 +76,7 @@ class Pkgbuild(object):
     def _load_packages(self):
         ''' load the packages from the PKGBUILD '''
         for line in self._packagelist().split():
-            match = re.match(r'^(.*)-([^-]*-[^-]*)-([^-]*)$', line)
+            match = re.match(r'^.*/(.*)-([^-]*-[^-]*)-([^-]*)\.pkg\.tar.*$', line)
 
             name = match.group(1)
             version = match.group(2)
@@ -134,6 +134,7 @@ class RepoDb(object):
 
         self._pkgbuilds = {}
         self._package_index = {}
+        self._broken_pkgbuilds = []
 
         self._load_packages()
 
@@ -144,6 +145,7 @@ class RepoDb(object):
             try:
                 self._pkgbuilds[name] = Pkgbuild(self, name)
             except sh.ErrorReturnCode:
+                self._broken_pkgbuilds.append('%s/%s' % (self.name, name))
                 logging.exception('no valid PKGBUILD at %s/%s', self._path, name)
 
         for pkgbuild in self._pkgbuilds.values():
@@ -164,6 +166,11 @@ class RepoDb(object):
     def pkgbuilds(self):
         ''' produce the list of pkgbuilds in this repo '''
         return self._pkgbuilds.values()
+
+    @property
+    def broken_pkgbuilds(self):
+        ''' produce a list of currently broken pkgbuilds in the repodb '''
+        return self._broken_pkgbuilds
 
     @property
     def packages(self):
@@ -204,6 +211,11 @@ class Repo(object):
     def path(self):
         ''' produce the path to the repo '''
         return self._path
+
+    @property
+    def repodbs(self):
+        ''' produce the list of repodbs in the repo '''
+        return self._repodbs.values()
 
     @property
     def packages(self):

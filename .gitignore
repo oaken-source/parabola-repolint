@@ -14,3 +14,6 @@ dist/
 
 # virtualenv
 .venv/
+
+# auxiliary files
+TODO
