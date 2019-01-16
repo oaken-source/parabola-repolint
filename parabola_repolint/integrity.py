@@ -18,7 +18,7 @@ def get_aurver(pkgname):
     return parse_version(ver.split('-')[0])
 
 
-class Linter(object):
+class Linter():
     ''' the lint tool '''
 
     @classmethod

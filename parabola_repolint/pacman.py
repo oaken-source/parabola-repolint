@@ -9,7 +9,7 @@ from pkg_resources import parse_version
 from .config import CONFIG
 
 
-class PacmanCache(object):
+class PacmanCache():
     ''' a pacman cache for arch or parabola '''
 
     def __init__(self, arch, repodb):

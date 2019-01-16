@@ -10,7 +10,7 @@ from xdg import BaseDirectory
 from pkg_resources import parse_version
 
 
-class Package(object):
+class Package():
     ''' represent a parabola Package '''
 
     def __init__(self, pkgbuild, name, version):
@@ -60,7 +60,7 @@ class Package(object):
         return 'Package::%s/%s-%s' % (self._pkgbuild.repodb.name, self._name, self._version)
 
 
-class Pkgbuild(object):
+class Pkgbuild():
     ''' represent a parabola PKGBUILD '''
 
     def __init__(self, repodb, name):
@@ -122,7 +122,7 @@ class Pkgbuild(object):
         return 'PKGBUILD@%s' % self._path
 
 
-class RepoDb(object):
+class RepoDb():
     ''' represent a database in the parabola package repository '''
 
     def __init__(self, repo, name):
@@ -182,7 +182,7 @@ class RepoDb(object):
         return 'RepoDb@%s' % self._path
 
 
-class Repo(object):
+class Repo():
     ''' represent the parabola package repository '''
 
     def __init__(self, path):

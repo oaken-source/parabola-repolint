@@ -12,7 +12,7 @@ def send_message(msg, *args):
     NoteMaster.send_message(msg, *args)
 
 
-class NoteMaster(object):
+class NoteMaster():
     ''' manage important messages produced by arthur '''
     _connections = []
 
@@ -35,14 +35,14 @@ class NoteMaster(object):
             cls._connections.append(TelegramConnection(config.chat_id, config.token))
 
 
-class LoggingConnection(object): # pylint: disable=too-few-public-methods
+class LoggingConnection(): # pylint: disable=too-few-public-methods
     ''' a notification connection through the logging interface '''
     def send_message(self, msg, args): # pylint: disable=no-self-use
         ''' send a message to the logging interface '''
         logging.warning(msg, *args)
 
 
-class TelegramConnection(object): # pylint: disable=too-few-public-methods
+class TelegramConnection(): # pylint: disable=too-few-public-methods
     ''' a notification connection through the telegram interface '''
     def __init__(self, chat_id, token):
         ''' constructor '''
