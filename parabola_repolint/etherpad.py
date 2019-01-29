@@ -53,3 +53,4 @@ def pad_replace(pad, content):
 
         browser.driver.switch_to_alert().accept()
         time.sleep(1)
+        browser.quit()
