@@ -15,11 +15,20 @@ CONFIG_DEFAULT_PATHS = [os.path.join(dir, CONFIG_NAME) for dir in CONFIG_DEFAULT
 
 class Bunch(dict):
     ''' a node in the config tree '''
-    def __init__(self, **data):
-        ''' populate the instance with the given data '''
-        data = {k: Bunch(**v) if isinstance(v, dict) else v for k, v in data.items()}
+
+    def __init__(self, data):
+        ''' constructor '''
         dict.__init__(self, data)
         self.__dict__ = self
+
+
+def _make_bunch(data):
+    ''' convert a bunch of data into a Bunch object '''
+    if isinstance(data, dict):
+        return Bunch({k: _make_bunch(v) for k, v in data.items()})
+    if isinstance(data, list):
+        return [_make_bunch(d) for d in data]
+    return data
 
 
 def _read_config(config):
@@ -28,7 +37,7 @@ def _read_config(config):
     with open(config) as file:
         data = yaml.safe_load(file.read())
         logging.info('loaded config from %s', config)
-    return Bunch(**data)
+    return _make_bunch(data)
 
 
 def _read_configs(configs):

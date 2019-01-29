@@ -1,98 +1,95 @@
 '''
-entry point of parabloa-repolint - setup logging, parse arguments, handle exceptions
+entry point of parabloa-repolint
 '''
 
-# pylint: disable=wrong-import-position,wrong-import-order
-import logging
-import sys
-logging.basicConfig(
-    format='[%(asctime)s][%(levelname)s] %(message)s',
-    level=logging.INFO,
-    stream=sys.stderr)
-
-from .config import CONFIG
-
-logging.info('setting root loglevel to %s', CONFIG.general.loglevel)
-logging.getLogger('root').setLevel(getattr(logging, CONFIG.general.loglevel, 0))
-logging.getLogger('sh.command').setLevel(logging.WARNING)
-
-import datetime
-import tempfile
 import argparse
-import sh
-from .parabola import Repo
-from .pacman import PacmanCache
-from .notification import send_message
-from .integrity import Linter
+import logging
+import logging.config
+import sys
+
+from parabola_repolint.config import CONFIG
+from parabola_repolint.linter import Linter
+from parabola_repolint.repocache import RepoCache
+from parabola_repolint.etherpad import pad_replace
 
 
-def make_argparser():
-    ''' produce the argparse object for arthur '''
-    parser = argparse.ArgumentParser(description='parabola package servant')
-    parser.add_argument('-X', '--noupdate', action='store_true', help='''
-do not attempt to update the repository and the chroots before linting
-''')
-    parser.add_argument('-c', '--checks', type=lambda a: set(s.strip() for s in a.split(',')),
-                        default=','.join(Linter.get_list_of_checks()), help='''
-comma-separated list of checks to perform. list of all known checks: %s
-''' % ', '.join(Linter.get_list_of_checks()))
+def make_argparser(linter):
+    ''' produce the argparse object '''
+    parser = argparse.ArgumentParser(
+        description='parabola package linter',
+        epilog='list of all supported linter checks: %s' % ', '.join(linter.checks)
+    )
+
+    parser.add_argument(
+        '-X',
+        '--noupdate',
+        action='store_true',
+        help='do not update repositories and packages from the mirrors before linting'
+    )
+
+    parser.add_argument(
+        '-i',
+        '--ignore-cache',
+        action='store_true',
+        help='discard all cached package information and refresh from mirrors'
+    )
+
+    parser.add_argument(
+        '-c',
+        '--checks',
+        type=lambda a: set() if not a else set(s.strip() for s in a.split(',')),
+        default=','.join(linter.checks),
+        help='comma-separated list of checks to perform'
+    )
+
+    parser.add_argument(
+        '-C',
+        '--skip-checks',
+        type=lambda a: set() if not a else set(s.strip() for s in a.split(',')),
+        default='',
+        help='comma-separated list of checks to skip'
+    )
 
     return parser
 
 
 def checked_main(args):
     ''' the main function '''
-    args = make_argparser().parse_args(args)
+    cache = RepoCache()
+    linter = Linter(cache)
 
-    repo = Repo(CONFIG.parabola.repo_path)
-    if not args.noupdate:
-        try:
-            repo.update()
-        except sh.ErrorReturnCode:
-            logging.exception('failed to update repository %s', repo)
-    repo.build_package_index(CONFIG.parabola.repodbs)
+    args = make_argparser(linter).parse_args(args)
 
-    caches = {}
-    for repodb in CONFIG.parabola.repodbs + ['core', 'extra', 'community']:
-        for arch in CONFIG.parabola.arches:
-            cache = PacmanCache(arch, repodb)
-            if not args.noupdate:
-                try:
-                    cache.update()
-                except sh.ErrorReturnCode:
-                    logging.exception('failed to update pacman cache %s', cache)
-            cache.load_packages()
-            caches[(repodb, arch)] = cache
+    diff = args.checks.union(args.skip_checks).difference(linter.checks)
+    if diff:
+        logging.warning("unrecognized linter checks: %s", ', '.join(diff))
 
-    linter = Linter(repo, caches)
-    results = linter.perform_checks(sorted(args.checks))
+    checks = args.checks.intersection(linter.checks).difference(args.skip_checks)
+    linter.load_checks(checks)
+    cache.load_repos(args.noupdate, args.ignore_cache)
+    linter.run_checks()
 
-    backlog = '''
-This is an auto-generated list of issues in the parabola package repository.
-Be aware that false positives in these lists are quite probable.
+    res = linter.format()
+    logging.info(res)
+    logging.warning(linter.short_format())
 
-Once a package is fixed, please remove it from the list below, to avoid
-unnecessary duplicated work.
+    pad_replace(CONFIG.parabola.pad_url, res)
 
-List generated:  %s
-
-
-%s
-''' % (datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), '\n\n'.join(results))
-
-    if CONFIG.notification.etherpad.url is not None:
-        with tempfile.NamedTemporaryFile() as f:
-            f.write(backlog.encode('utf-8'))
-            sh.etherpad_import_cli(CONFIG.notification.etherpad.url, f.name)
 
 
 def main(args=None):
     ''' a catchall exception handler '''
+    logging.config.dictConfig(CONFIG.logging)
+
+    if args is None:
+        args = sys.argv[1:]
+
     try:
-        checked_main(args if args is not None else sys.argv[1:])
-    except Exception as ex: # pylint: disable=broad-except
+        checked_main(args)
+    except SystemExit:
+        pass
+    except: # pylint: disable=bare-except
         logging.exception('unrecoverable error')
-        send_message('unrecoverable error:\n%s', ex)
         sys.exit(1)
 
 

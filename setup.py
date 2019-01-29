@@ -22,13 +22,12 @@ setup(
     },
 
     install_requires=[
-        'python-telegram-bot',
         'pyyaml',
         'sh',
         'pyxdg',
-        'lxml',
-        'beautifulsoup4',
-        'requests',
+        'python-gnupg',
+        'python-telegram-bot',
+        'splinter',
     ],
 
     license='GPLv3',

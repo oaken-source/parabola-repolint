@@ -1,22 +1,48 @@
 
-general:
-  loglevel: WARNING
-
 parabola:
-  maintainer: John Doe <john.doe@example.com>
-  repo_path: /path/to/abslibre
-  repodbs: ['libre', 'pcr', 'nonprism']
-  arches: ['x86_64', 'i686', 'armv7h']
+  arches: ['x86_64', 'i686', 'armv7h', 'ppc64le']
+  repos: ['libre', 'pcr', 'nonprism']
+  abslibre: git://git.parabola.nu/abslibre/abslibre.git
+  pad_url: "https://pad.riseup.net/p/ParabolaOutOfDate"
+
+gnupg:
+  gpgdir: /etc/pacman.d/gnupg/
+  keyserver: hkp://keys.gnupg.net
 
 mirrors:
-  parabola: http://mirror.example.com
-  archlinux: http://mirror.example.com
-  archlinux32: http://mirror.example.com
-  archlinuxarm: http://mirror.example.com
+  - mirror: rsync://repo.parabola.nu:875/repos/%(repo)s/os/%(arch)s
+    repos: ['libre', 'pcr', 'nonprism']
+    arches: ['x86_64', 'i686', 'armv7h', 'ppc64le']
+  - mirror: https://ftp.fau.de/archlinux/%(repo)s/os/%(arch)s
+    repos: ['core', 'extra', 'community']
+    arches: ['x86_64']
+  - mirror: http://mirror.archlinux32.org/%(arch)s/%(repo)s
+    repos: ['core', 'extra', 'community']
+    arches: ['i686']
+  - mirror: http://mirror.archlinuxarm.org/%(arch)s/%(repo)s
+    repos: ['core', 'extra', 'community']
+    arches: ['armv7h']
 
-notification:
-  telegram:
-    token: "<token>"
-    chat_id: "<chat_id>"
-  etherpad:
-    url: "<url>"
+logging:
+  version: 1
+  formatters:
+    brief:
+      format: '%(levelname)s: %(message)s'
+    verybrief:
+      format: '%(message)s'
+  handlers:
+    console:
+      class: logging.StreamHandler
+      formatter: brief
+      level: INFO
+      stream: ext://sys.stdout
+    telegram:
+      class: parabola_repolint.telegram_logging.TelegramHandler
+      formatter: verybrief
+      level: WARNING
+      token: null
+      chat_id: null
+  loggers:
+    '':
+      handlers: [console,telegram]
+      level: DEBUG

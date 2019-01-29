@@ -17,3 +17,4 @@ dist/
 
 # auxiliary files
 TODO
+geckodriver.log
