@@ -13,7 +13,10 @@ setup(
     long_description=open(join(dirname(__file__), 'README.rst')).read(),
 
     keywords='parabola packages maintenance',
-    packages=['parabola_repolint'],
+    packages=[
+        'parabola_repolint',
+        'parabola_repolint.linter_checks',
+    ],
 
     entry_points={
         'console_scripts': [
