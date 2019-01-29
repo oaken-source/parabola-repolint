@@ -18,7 +18,7 @@ class InvalidPkgbuildChecksum(LinterCheckBase):
 
     def format(self, issues):
         ''' format the list of found issues '''
-        result = 'packages with invalid PKGBUILD checksums  that are out of date:'
+        result = 'packages with invalid PKGBUILD checksums:'
         for issue in issues:
             result += '\n    %s (%s)' % (issue[0], issue[1])
         return result
