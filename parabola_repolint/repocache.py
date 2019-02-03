@@ -360,4 +360,4 @@ class RepoCache():
         remote = mirror % dict(repo=repo, arch=arch)
         local = os.path.join(self._packages_dir, repo)
         os.makedirs(local, exist_ok=True)
-        sh.rsync('-a', '-L', '--delete-after', '--filter="P *.pkginfo"', remote, local)
+        sh.rsync('-a', '-L', '--delete-after', '--filter', 'P *.pkginfo', remote, local)
