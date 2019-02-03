@@ -41,9 +41,9 @@ class Package():
             else:
                 self._data[cur] = line
 
-        self._pkgbuild = repo.find_pkgbuild(self.pkgname)
-        if self._pkgbuild is None and self.pkgname.endswith('-debug'):
-            self._pkgbuild = repo.find_pkgbuild(self.pkgname[:-6])
+        self._pkgbuilds = repo.pkgbuild_cache.get(self.pkgname, [])
+        if not self._pkgbuilds and self.pkgname.endswith('-debug'):
+            self._pkgbuilds = repo.pkgbuild_cache.get(self.pkgname[:-6], [])
 
     def _cached_pacinfo(self, cachefile, mtime):
         ''' get information from a package '''
@@ -68,9 +68,14 @@ class Package():
         return self._path
 
     @property
-    def pkgbuild(self):
-        ''' produce the pkgbuild to the package '''
-        return self._pkgbuild
+    def pkgbuilds(self):
+        ''' produce the pkgbuilds to the package '''
+        return self._pkgbuilds
+
+    @property
+    def repo(self):
+        ''' produce the repo of the package '''
+        return self._repo
 
     @property
     def pkgname(self):
@@ -266,10 +271,15 @@ class Repo():
         self._package_dir = package_dir
 
         self._pkgbuilds = []
+        self._pkgbuild_cache = {}
         for root, _, files in os.walk(self._pkgbuild_dir):
             if 'PKGBUILD' in files:
-                pkgbuild_path = os.path.join(root, 'PKGBUILD')
-                self._pkgbuilds.append(Pkgbuild(self, pkgbuild_path))
+                pkgbuild = Pkgbuild(self, os.path.join(root, 'PKGBUILD'))
+                self._pkgbuilds.append(pkgbuild)
+                for pkgname in pkgbuild.srcinfo.pkginfo:
+                    if pkgname not in self._pkgbuild_cache:
+                        self._pkgbuild_cache[pkgname] = []
+                    self._pkgbuild_cache[pkgname].append(pkgbuild)
 
         self._packages = []
         for root, _, files in os.walk(self._package_dir):
@@ -287,11 +297,10 @@ class Repo():
         ''' produce the list of packages in the repo '''
         return self._packages
 
-    def find_pkgbuild(self, pkgname):
-        ''' find a pkgbuild by pkgname '''
-        for pkgbuild in self.pkgbuilds:
-            if pkgname in pkgbuild.srcinfo.pkginfo:
-                return pkgbuild
+    @property
+    def pkgbuild_cache(self):
+        ''' produce the list of pkgbuilds by pkgname '''
+        return self._pkgbuild_cache
 
     def __repr__(self):
         ''' produce a string representation of the repo '''
