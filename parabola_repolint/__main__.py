@@ -71,10 +71,9 @@ def checked_main(args):
 
     res = linter.format()
     logging.info(res)
-    logging.warning(linter.short_format())
-
     pad_replace(CONFIG.parabola.pad_url, res)
 
+    logging.warning(linter.short_format())
 
 
 def main(args=None):

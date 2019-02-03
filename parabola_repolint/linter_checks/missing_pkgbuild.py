@@ -14,7 +14,8 @@ class MissingPkgbuild(LinterCheckBase):
 
     def check(self, package):
         ''' check for packages with nonexistant pkgbuild '''
-        pass
+        if package.pkgbuild is None:
+            raise LinterIssue(package)
 
     def format(self, issues):
         ''' format the list of found issues '''

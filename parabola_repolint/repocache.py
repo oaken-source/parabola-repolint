@@ -23,10 +23,59 @@ class Package():
         self._repo = repo
         self._arch = os.path.basename(os.path.dirname(path))
 
+        mtime = os.path.getmtime(self._path)
+        cache_path = path + '.pkginfo'
+
+        self._data = {}
+        data = self._cached_pacinfo(cache_path, mtime)
+        cur = None
+        for line in data.splitlines():
+            if not line:
+                continue
+            if line[16] == ':':
+                cur, line = line.split(':', 1)
+                cur = cur.strip()
+            line = line.strip()
+            if cur in self._data:
+                self._data[cur] += ' ' + line
+            else:
+                self._data[cur] = line
+
+        self._pkgbuild = repo.find_pkgbuild(self.pkgname)
+        if self._pkgbuild is None and self.pkgname.endswith('-debug'):
+            self._pkgbuild = repo.find_pkgbuild(self.pkgname[:-6])
+
+    def _cached_pacinfo(self, cachefile, mtime):
+        ''' get information from a package '''
+        if os.path.isfile(cachefile) and os.path.getmtime(cachefile) > mtime:
+            with open(cachefile, 'r') as infile:
+                return infile.read()
+
+        res = ''
+        try:
+            res = str(sh.pacman('-Qip', self._path))
+        except sh.ErrorReturnCode:
+            logging.exception('pacman -Qip failed for %s', self)
+
+        with open(cachefile, 'w') as outfile:
+            outfile.write(res)
+
+        return res
+
     @property
     def path(self):
         ''' produce the path to the package file '''
         return self._path
+
+    @property
+    def pkgbuild(self):
+        ''' produce the pkgbuild to the package '''
+        return self._pkgbuild
+
+    @property
+    def pkgname(self):
+        ''' produce the name of the package '''
+        return self._data['Name']
 
     def __repr__(self):
         ''' produce a string representation '''
@@ -238,6 +287,12 @@ class Repo():
         ''' produce the list of packages in the repo '''
         return self._packages
 
+    def find_pkgbuild(self, pkgname):
+        ''' find a pkgbuild by pkgname '''
+        for pkgbuild in self.pkgbuilds:
+            if pkgname in pkgbuild.srcinfo.pkginfo:
+                return pkgbuild
+
     def __repr__(self):
         ''' produce a string representation of the repo '''
         return '[%s]' % self._name
@@ -305,4 +360,4 @@ class RepoCache():
         remote = mirror % dict(repo=repo, arch=arch)
         local = os.path.join(self._packages_dir, repo)
         os.makedirs(local, exist_ok=True)
-        sh.rsync('-a', '-L', '--delete-after', remote, local)
+        sh.rsync('-a', '-L', '--delete-after', '--filter="P *.pkginfo"', remote, local)
