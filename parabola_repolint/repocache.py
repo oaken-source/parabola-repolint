@@ -51,7 +51,6 @@ class PkgFile():
             self._pkgentries = repo.pkgentries_cache[self._repoarch].get(self.pkgname[:-6], [])
         for pkgentry in self._pkgentries:
             pkgentry.register_pkgfile(self)
-        print(self._pkgentries)
 
     def _cached_pacinfo(self, cachefile, mtime):
         ''' get information from a package '''
@@ -361,7 +360,10 @@ class PkgBuild():
 
     def __repr__(self):
         ''' a string representation '''
-        return 'PKGBUILD @ %s' % self._path
+        path = self._path
+        path, pkgname = os.path.split(path)
+        _, repo = os.path.split(path)
+        return '%s/%s' % (repo, pkgname)
 
 
 class Repo():
@@ -380,12 +382,20 @@ class Repo():
         self._pkgbuild_cache = {}
         self._load_pkgbuilds()
 
+        logging.info(self._pkgbuilds)
+        logging.info(self._pkgbuild_cache)
+
         self._pkgentries = []
         self._pkgentries_cache = {}
         self._load_pkgentries()
 
+        logging.info(self._pkgentries)
+        logging.info(self._pkgentries_cache)
+
         self._pkgfiles = []
         self._load_pkgfiles()
+
+        logging.info(self._pkgfiles)
 
     @property
     def pkgbuilds(self):
