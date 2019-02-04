@@ -1,5 +1,5 @@
 '''
-this is a linter check for invalid package signatures
+this are linter checks for package signatures
 '''
 
 import logging
@@ -15,7 +15,7 @@ class InvalidSignature(LinterCheckBase):
     ''' check for a package without an invalid signature '''
 
     name = 'invalid_signature'
-    check_type = LinterCheckType.PACKAGE
+    check_type = LinterCheckType.PKGFILE
 
     def __init__(self, *args, **kwargs):
         ''' constructor '''

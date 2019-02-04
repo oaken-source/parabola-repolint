@@ -6,11 +6,12 @@ the version of the PKGBUILD in abslibre
 from parabola_repolint.linter import LinterIssue, LinterCheckBase, LinterCheckType
 
 
+# pylint: disable=no-self-use
 class InvalidPkgbuildChecksum(LinterCheckBase):
     ''' check for a package with invalid pkgbuild checksum '''
 
     name = 'invalid_pkgbuild_checksum'
-    check_type = LinterCheckType.PACKAGE
+    check_type = LinterCheckType.PKGFILE
 
     def check(self, pkgbuild):
         ''' check for a package with pkgbuild checksum mismatch '''

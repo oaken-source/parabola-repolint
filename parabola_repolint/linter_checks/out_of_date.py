@@ -3,9 +3,9 @@ this is a linter check for PKGBUILDs that are out of date
 '''
 
 from parabola_repolint.linter import LinterIssue, LinterCheckBase, LinterCheckType
-from parabola_repolint.config import CONFIG
 
 
+# pylint: disable=no-self-use
 class OutOfDate(LinterCheckBase):
     ''' check for a pkgbuild with an out of date version '''
 

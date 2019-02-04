@@ -1,5 +1,5 @@
 '''
-this is a linter check for unsupported architectures
+these are linter checks for PKGBUILD / .pkg.tar.xz / repo.db entry integrity
 '''
 
 from parabola_repolint.linter import LinterIssue, LinterCheckBase, LinterCheckType
@@ -7,6 +7,26 @@ from parabola_repolint.config import CONFIG
 
 
 KNOWN_ARCHES = CONFIG.parabola.arches
+
+
+# pylint: disable=no-self-use
+class InvalidPkgbuild(LinterCheckBase):
+    ''' check for invalid (broken) PKGBUILD files '''
+
+    name = 'invalid_pkgbuild'
+    check_type = LinterCheckType.PKGBUILD
+
+    def check(self, pkgbuild):
+        ''' check for invalid PKGBULDs in abslibre '''
+        if not pkgbuild.valid:
+            raise LinterIssue(pkgbuild)
+
+    def format(self, issues):
+        ''' format the list of found issues '''
+        result = 'broken PKGBUILDs:'
+        for issue in issues:
+            result += '\n    %s' % issue[0]
+        return result
 
 
 # pylint: disable=no-self-use

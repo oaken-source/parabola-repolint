@@ -2,11 +2,9 @@
 logging facilities for a telegram backend
 '''
 
-from parabola_repolint.config import CONFIG
+import logging
 
 import telegram
-
-import logging
 
 
 class TelegramHandler(logging.StreamHandler):
@@ -26,4 +24,3 @@ class TelegramHandler(logging.StreamHandler):
         ''' emit a logging record '''
         if self._connection:
             self._connection.send_message(self._chat_id, self.format(record))
-

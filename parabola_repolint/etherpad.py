@@ -2,11 +2,11 @@
 functions to interface with an etherpad instance
 '''
 
-import selenium
-import splinter
-
 import time
 import tempfile
+
+import selenium
+import splinter
 
 
 def pad_replace(pad, content):
