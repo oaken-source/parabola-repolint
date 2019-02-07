@@ -3,6 +3,7 @@ this are linter checks for package signatures
 '''
 
 import logging
+from urllib.parse import unquote
 
 import gnupg
 
@@ -12,10 +13,16 @@ from parabola_repolint.config import CONFIG
 
 # pylint: disable=no-self-use
 class InvalidSignature(LinterCheckBase):
-    ''' check for a package without an invalid signature '''
+    '''
+  this check validates the package signature against the pacman keyrings. It
+  reports an issue whenever a package is signed by an unknown key, that is not
+  part of the keyring, or by a key that has expired.
+'''
 
     name = 'invalid_signature'
     check_type = LinterCheckType.PKGFILE
+
+    header = 'packages with invalid signatures'
 
     def __init__(self, *args, **kwargs):
         ''' constructor '''
@@ -24,7 +31,7 @@ class InvalidSignature(LinterCheckBase):
         self._gpg_home = gnupg.GPG()
 
     def check(self, package):
-        ''' check for packages with an invalid signature '''
+        ''' run the check '''
         sigfile = "%s.sig" % package.path
         try:
             with open(sigfile, 'rb') as sig:
@@ -39,7 +46,7 @@ class InvalidSignature(LinterCheckBase):
             uid = verify.key_id
             key = self._gpg_home.search_keys(uid, CONFIG.gnupg.keyserver)
             if key.uids:
-                uid = key.uids[0]
+                uid = unquote(key.uids[0])
             else:
                 logging.warning('%s: error in key resolution: (%s)', uid, key.__dict__)
             if verify.key_status == 'signing key has expired':
@@ -51,7 +58,7 @@ class InvalidSignature(LinterCheckBase):
 
     def format(self, issues):
         ''' format the list of found issues '''
-        result = 'packages with invalid signatures:'
+        result = []
         for issue in issues:
-            result += '\n    %s: %s' % (issue[0], issue[1])
-        return result
+            result.append('    %s: %s' % (issue[0], issue[1]))
+        return "\n".join(sorted(result))

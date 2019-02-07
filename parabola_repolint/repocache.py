@@ -15,12 +15,12 @@ from parabola_repolint.config import CONFIG
 class PkgFile():
     ''' represent a parabola pkg.tar.xz file '''
 
-    def __init__(self, repo, path):
+    def __init__(self, repo, path, repoarch):
         ''' constructor '''
         self._repo = repo
         self._path = path
 
-        self._repoarch = os.path.basename(os.path.dirname(path))
+        self._repoarch = repoarch
 
         mtime = os.path.getmtime(self._path)
         cache_path = path + '.pkginfo'
@@ -40,17 +40,19 @@ class PkgFile():
             else:
                 self._data[cur] = line
 
-        self._pkgbuilds = repo.pkgbuild_cache.get(self.pkgname, [])
+        pkgbuild_cache = repo.pkgbuild_cache.get(repoarch, {})
+        self._pkgbuilds = pkgbuild_cache.get(self.pkgname, [])
         if not self._pkgbuilds and self.pkgname.endswith('-debug'):
-            self._pkgbuilds = repo.pkgbuild_cache.get(self.pkgname[:-6], [])
+            self._pkgbuilds = pkgbuild_cache.get(self.pkgname[:-6], [])
         for pkgbuild in self._pkgbuilds:
-            pkgbuild.register_pkgfile(self)
+            pkgbuild.register_pkgfile(self, repoarch)
 
-        self._pkgentries = repo.pkgentries_cache[self._repoarch].get(self.pkgname, [])
+        pkgentries_cache = repo.pkgentries_cache.get(repoarch, {})
+        self._pkgentries = pkgentries_cache.get(self.pkgname, [])
         if not self._pkgentries and self.pkgname.endswith('-debug'):
-            self._pkgentries = repo.pkgentries_cache[self._repoarch].get(self.pkgname[:-6], [])
+            self._pkgentries = pkgentries_cache.get(self.pkgname[:-6], [])
         for pkgentry in self._pkgentries:
-            pkgentry.register_pkgfile(self)
+            pkgentry.register_pkgfile(self, repoarch)
 
     def _cached_pacinfo(self, cachefile, mtime):
         ''' get information from a package '''
@@ -104,6 +106,7 @@ class PkgFile():
         path = self._path
         path, pkgfile = os.path.split(path)
         path, arch = os.path.split(path)
+        path, _ = os.path.split(path)
         _, repo = os.path.split(path)
         return "%s/%s/%s" % (repo, arch, pkgfile)
 
@@ -111,12 +114,12 @@ class PkgFile():
 class PkgEntry():
     ''' represent an entry in a repo.db '''
 
-    def __init__(self, repo, path):
+    def __init__(self, repo, path, repoarch):
         ''' constructor '''
         self._repo = repo
         self._path = path
 
-        self._repoarch = os.path.basename(os.path.dirname(path))
+        self._repoarch = repoarch
 
         with open(os.path.join(path, 'desc'), 'r') as infile:
             data = infile.read()
@@ -135,17 +138,20 @@ class PkgEntry():
             else:
                 self._data[cur] = line
 
-        self._pkgbuilds = repo.pkgbuild_cache.get(self.pkgname, [])
+        pkgbuild_cache = repo.pkgbuild_cache.get(repoarch, {})
+        self._pkgbuilds = pkgbuild_cache.get(self.pkgname, [])
         if not self._pkgbuilds and self.pkgname.endswith('-debug'):
-            self._pkgbuilds = repo.pkgbuild_cache.get(self.pkgname[:-6], [])
+            self._pkgbuilds = pkgbuild_cache.get(self.pkgname[:-6], [])
         for pkgbuild in self._pkgbuilds:
-            pkgbuild.register_pkgentry(self)
+            pkgbuild.register_pkgentry(self, repoarch)
 
-        self._pkgfiles = []
+        self._pkgfiles = {}
 
-    def register_pkgfile(self, pkgfile):
+    def register_pkgfile(self, pkgfile, arch):
         ''' add a pkgfile to this pkgentry '''
-        self._pkgfiles.append(pkgfile)
+        if arch not in self._pkgfiles:
+            self._pkgfiles[arch] = []
+        self._pkgfiles[arch].append(pkgfile)
 
     @property
     def pkgname(self):
@@ -172,6 +178,7 @@ class PkgEntry():
         path = self._path
         path, _ = os.path.split(path)
         path, arch = os.path.split(path)
+        path, _ = os.path.split(path)
         _, repo = os.path.split(path)
         return "%s/%s/%s" % (repo, arch, self.pkgname)
 
@@ -281,19 +288,24 @@ class PkgBuild():
         self._path = os.path.dirname(path)
 
         self._valid = None
-        self._srcinfo = None
-        self._pkglist = None
+        self._srcinfo = {}
+        self._pkglist = {}
+        self._arches = set()
 
-        self._pkgentries = []
-        self._pkgfiles = []
+        self._pkgentries = {}
+        self._pkgfiles = {}
 
-    def register_pkgentry(self, pkgentry):
+    def register_pkgentry(self, pkgentry, arch):
         ''' add a pkgentry to this pkgbuild '''
-        self._pkgentries.append(pkgentry)
+        if arch not in self._pkgentries:
+            self._pkgentries[arch] = []
+        self._pkgentries[arch].append(pkgentry)
 
-    def register_pkgfile(self, pkgfile):
+    def register_pkgfile(self, pkgfile, arch):
         ''' add a pkgfile to this pkgbuild '''
-        self._pkgfiles.append(pkgfile)
+        if arch not in self._pkgfiles:
+            self._pkgfiles[arch] = []
+        self._pkgfiles[arch].append(pkgfile)
 
     @property
     def valid(self):
@@ -317,6 +329,13 @@ class PkgBuild():
         return self._srcinfo
 
     @property
+    def arches(self):
+        ''' produce the list of arches supported by this PKGBUILD '''
+        if self._valid is None:
+            self._load_metadata()
+        return self._arches
+
+    @property
     def pkgentries(self):
         ''' produce the list of pkgentries linked to this pkgbuild '''
         return self._pkgentries
@@ -330,16 +349,36 @@ class PkgBuild():
         ''' attempt to parse the PKGBUILD '''
         mtime = os.path.getmtime(os.path.join(self._path, 'PKGBUILD'))
 
-        srcinfo = os.path.join(self._path, '.srcinfo')
-        srcinfo_str = self._cached_makepkg(srcinfo, mtime, '--printsrcinfo')
+        os.environ.pop('CARCH', None)
+        si_file = os.path.join(self._path, '.srcinfo')
+        si_str = self._cached_makepkg(si_file, mtime, '--printsrcinfo')
 
-        pkglist = os.path.join(self._path, '.pkglist')
-        pkglist_str = self._cached_makepkg(pkglist, mtime, '--packagelist')
+        if not si_str:
+            self._valid = False
+            return
 
-        self._valid = srcinfo_str and pkglist_str
-        if self._valid:
-            self._srcinfo = Srcinfo(srcinfo_str)
-            self._pkglist = pkglist_str.split()
+        srcinfo = Srcinfo(si_str)
+
+        self._arches = srcinfo.pkgbase['arch']
+        if 'any' in self._arches:
+            self._arches = self._arches.difference(['any'])
+            self._arches = self._arches.union(CONFIG.parabola.arches)
+
+        for arch in self._arches.intersection(CONFIG.parabola.arches):
+            os.environ['CARCH'] = arch
+            si_file = os.path.join(self._path, '.%s.srcinfo' % arch)
+            si_str = self._cached_makepkg(si_file, mtime, '--printsrcinfo')
+            pl_file = os.path.join(self._path, '.%s.pkglist' % arch)
+            pl_str = self._cached_makepkg(pl_file, mtime, '--packagelist')
+            os.environ.pop('CARCH', None)
+
+            if not si_str or not pl_str:
+                self._valid = False
+                return
+
+            self._srcinfo[arch] = Srcinfo(si_str)
+            self._pkglist[arch] = pl_str.split()
+            self._valid = True
 
     def _cached_makepkg(self, cachefile, mtime, *args, **kwargs):
         ''' speed up makepkg calls by caching results '''
@@ -360,10 +399,7 @@ class PkgBuild():
 
     def __repr__(self):
         ''' a string representation '''
-        path = self._path
-        path, pkgname = os.path.split(path)
-        _, repo = os.path.split(path)
-        return '%s/%s' % (repo, pkgname)
+        return '%s/%s/PKGBUILD' % (self._repo.name, os.path.basename(self._path))
 
 
 class Repo():
@@ -372,7 +408,6 @@ class Repo():
     def __init__(self, name, pkgbuild_dir, pkgentries_dir, pkgfiles_dir):
         ''' constructor '''
         self._name = name
-        self._arches = CONFIG.parabola.arches
 
         self._pkgbuild_dir = pkgbuild_dir
         self._pkgentries_dir = pkgentries_dir
@@ -382,20 +417,25 @@ class Repo():
         self._pkgbuild_cache = {}
         self._load_pkgbuilds()
 
-        logging.info(self._pkgbuilds)
-        logging.info(self._pkgbuild_cache)
+        logging.info('%s pkgbuilds: %s', name, self._pkgbuilds)
+        logging.info('%s pkgbuild_cache: %s', name, self._pkgbuild_cache)
 
         self._pkgentries = []
         self._pkgentries_cache = {}
         self._load_pkgentries()
 
-        logging.info(self._pkgentries)
-        logging.info(self._pkgentries_cache)
+        logging.info('%s pkgentries: %s', name, self._pkgentries)
+        logging.info('%s pkgentries_cache: %s', name, self._pkgentries_cache)
 
         self._pkgfiles = []
         self._load_pkgfiles()
 
-        logging.info(self._pkgfiles)
+        logging.info('%s pkgfiles: %s', name, self._pkgfiles)
+
+    @property
+    def name(self):
+        ''' produce the name of the repo '''
+        return self._name
 
     @property
     def pkgbuilds(self):
@@ -428,26 +468,37 @@ class Repo():
             if 'PKGBUILD' in files:
                 pkgbuild = PkgBuild(self, os.path.join(root, 'PKGBUILD'))
                 self._pkgbuilds.append(pkgbuild)
-                for pkgname in pkgbuild.srcinfo.pkginfo:
-                    if pkgname not in self._pkgbuild_cache:
-                        self._pkgbuild_cache[pkgname] = []
-                    self._pkgbuild_cache[pkgname].append(pkgbuild)
+                for arch in pkgbuild.arches.intersection(CONFIG.parabola.arches):
+                    if arch not in self._pkgbuild_cache:
+                        self._pkgbuild_cache[arch] = {}
+                    for pkgname in pkgbuild.srcinfo[arch].pkginfo:
+                        if pkgname not in self._pkgbuild_cache[arch]:
+                            self._pkgbuild_cache[arch][pkgname] = []
+                        self._pkgbuild_cache[arch][pkgname].append(pkgbuild)
 
     def _load_pkgentries(self):
         ''' extract and then load the entries in the db.tar.xz '''
-        for arch in self._arches:
-            src = os.path.join(self._pkgfiles_dir, arch)
-            dst = os.path.join(self._pkgentries_dir, arch)
+        for root, _, files in os.walk(self._pkgfiles_dir):
+            if '%s.db' % self._name in files:
+                arch = os.path.basename(root)
+                if arch not in CONFIG.parabola.arches:
+                    continue
 
-            os.makedirs(dst, exist_ok=True)
-            shutil.rmtree(dst)
-            os.makedirs(dst, exist_ok=True)
+                dst = os.path.join(self._pkgentries_dir, 'os', arch)
 
-            sh.tar('xf', os.path.join(src, self._name + '.db'), _cwd=dst)
+                os.makedirs(dst, exist_ok=True)
+                shutil.rmtree(dst)
+                os.makedirs(dst, exist_ok=True)
+
+                sh.tar('xf', os.path.join(root, self._name + '.db'), _cwd=dst)
 
         for root, _, files in os.walk(self._pkgentries_dir):
             if 'desc' in files:
-                pkgentry = PkgEntry(self, root)
+                arch = os.path.basename(os.path.dirname(root))
+                if arch not in CONFIG.parabola.arches:
+                    continue
+
+                pkgentry = PkgEntry(self, root, arch)
                 self._pkgentries.append(pkgentry)
                 if pkgentry.arch not in self._pkgentries_cache:
                     self._pkgentries_cache[pkgentry.arch] = {}
@@ -458,8 +509,13 @@ class Repo():
     def _load_pkgfiles(self):
         ''' load the pkg.tar.xz files from the repo '''
         for root, _, files in os.walk(self._pkgfiles_dir):
-            for pkg in [f for f in files if f.endswith('.pkg.tar.xz')]:
-                self._pkgfiles.append(PkgFile(self, os.path.join(root, pkg)))
+            arch = os.path.basename(root)
+            if arch not in CONFIG.parabola.arches:
+                continue
+
+            for pkg in files:
+                if pkg.endswith('.pkg.tar.xz'):
+                    self._pkgfiles.append(PkgFile(self, os.path.join(root, pkg), arch))
 
     def __repr__(self):
         ''' produce a string representation of the repo '''
@@ -471,7 +527,8 @@ class RepoCache():
 
     def __init__(self):
         ''' constructor '''
-        self._cache_dir = os.path.join(BaseDirectory.xdg_cache_home, 'parabola-repolint')
+        cache_base_dir = BaseDirectory.xdg_cache_home
+        self._cache_dir = os.path.join(cache_base_dir, 'parabola-repolint')
         self._abslibre_dir = os.path.join(self._cache_dir, 'abslibre')
         self._pkgentries_dir = os.path.join(self._cache_dir, 'pkgentries')
         self._pkgfiles_dir = os.path.join(self._cache_dir, 'pkgfiles')
@@ -523,15 +580,7 @@ class RepoCache():
 
     def _update_packages(self):
         ''' update the package cache '''
-        for repo in self._repo_names:
-            for arch in self._arches:
-                for mirror in CONFIG.mirrors:
-                    if arch in mirror.arches and repo in mirror.repos:
-                        self._update_from_mirror(repo, arch, mirror.mirror)
-
-    def _update_from_mirror(self, repo, arch, mirror):
-        ''' update the package cache from a given mirror '''
-        remote = mirror % dict(repo=repo, arch=arch)
-        local = os.path.join(self._pkgfiles_dir, repo)
+        remote = CONFIG.parabola.mirror
+        local = self._pkgfiles_dir
         os.makedirs(local, exist_ok=True)
-        sh.rsync('-a', '-L', '--delete-after', '--filter', 'P *.pkginfo', remote, local)
+        sh.rsync('-a', '--delete-after', '--filter', 'P *.pkginfo', remote, local)

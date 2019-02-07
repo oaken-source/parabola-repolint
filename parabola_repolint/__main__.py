@@ -15,9 +15,11 @@ from parabola_repolint.etherpad import pad_replace
 
 def make_argparser(linter):
     ''' produce the argparse object '''
+    checks = "\n  " + "\n  ".join(sorted(linter.checks))
     parser = argparse.ArgumentParser(
         description='parabola package linter',
-        epilog='list of all supported linter checks: %s' % ', '.join(linter.checks)
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="list of all supported linter checks: %s" % checks
     )
 
     parser.add_argument(

@@ -1,4 +1,6 @@
 
+TODO
+
 # config files
 *.conf
 
@@ -14,7 +16,3 @@ dist/
 
 # virtualenv
 .venv/
-
-# auxiliary files
-TODO
-geckodriver.log
