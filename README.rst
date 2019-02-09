@@ -52,6 +52,13 @@ for the list of entries in a repo.db, check whether more than one valid
 PKGBUILD exists that creates the entry. The check reports an issue for each
 repo.db entry that has more than one producing PKGBUILD.
 
+pkgentry_missing_pkgfile
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+for the list of entries in a repo.db, check wether a built package exists that
+backs the entry. The check reports an issue for each repo.db entry that is not
+associatable with a valid built package.
+
 pkgfile_missing_pkgbuild
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -65,6 +72,20 @@ pkgfile_duplicate_pkgbuilds
 for the list of built packages, check whether more than one valid PKGBUILD
 exists that creates the package. The check reports an issue for each built
 package that has more than one producing PKGBUILD.
+
+pkgfile_missing_pkgentry
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+for the list of built packages, check wether a repo.db entry exists that refers
+to the package. The check reports an issue for each built package that is not
+referred to by a repo.db entry.
+
+pkgfile_duplicate_pkgentries
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+for the list of built packages, check that at most one repo.db entry exists
+that refers to the package. The check reports an issue for each built package
+that is referred to by multiple repo.db entries.
 
 PKGBUILD validity checks
 ------------------------

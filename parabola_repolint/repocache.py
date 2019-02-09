@@ -42,15 +42,11 @@ class PkgFile():
 
         pkgbuild_cache = repo.pkgbuild_cache.get(repoarch, {})
         self._pkgbuilds = pkgbuild_cache.get(self.pkgname, [])
-        if not self._pkgbuilds and self.pkgname.endswith('-debug'):
-            self._pkgbuilds = pkgbuild_cache.get(self.pkgname[:-6], [])
         for pkgbuild in self._pkgbuilds:
             pkgbuild.register_pkgfile(self, repoarch)
 
         pkgentries_cache = repo.pkgentries_cache.get(repoarch, {})
         self._pkgentries = pkgentries_cache.get(self.pkgname, [])
-        if not self._pkgentries and self.pkgname.endswith('-debug'):
-            self._pkgentries = pkgentries_cache.get(self.pkgname[:-6], [])
         for pkgentry in self._pkgentries:
             pkgentry.register_pkgfile(self, repoarch)
 
@@ -140,8 +136,6 @@ class PkgEntry():
 
         pkgbuild_cache = repo.pkgbuild_cache.get(repoarch, {})
         self._pkgbuilds = pkgbuild_cache.get(self.pkgname, [])
-        if not self._pkgbuilds and self.pkgname.endswith('-debug'):
-            self._pkgbuilds = pkgbuild_cache.get(self.pkgname[:-6], [])
         for pkgbuild in self._pkgbuilds:
             pkgbuild.register_pkgentry(self, repoarch)
 
@@ -471,6 +465,10 @@ class Repo():
                 for arch in pkgbuild.arches.intersection(CONFIG.parabola.arches):
                     if arch not in self._pkgbuild_cache:
                         self._pkgbuild_cache[arch] = {}
+                    pkgname = '%s-debug' % pkgbuild.srcinfo[arch].pkgbase['pkgbase']
+                    if pkgname not in self._pkgbuild_cache[arch]:
+                        self._pkgbuild_cache[arch][pkgname] = []
+                    self._pkgbuild_cache[arch][pkgname].append(pkgbuild)
                     for pkgname in pkgbuild.srcinfo[arch].pkginfo:
                         if pkgname not in self._pkgbuild_cache[arch]:
                             self._pkgbuild_cache[arch][pkgname] = []

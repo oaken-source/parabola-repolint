@@ -75,7 +75,7 @@ class UnsupportedArches(LinterCheckBase):
                     unsup[pkgname] = unsup[pkgname].union(unsup_pkg)
 
         if unsup:
-            unsup_str = '; '.join(['%s: %s' % (p, ','.join(u)) for p,u in unsup.items()])
+            unsup_str = '; '.join(['%s: %s' % (p, ','.join(u)) for p, u in unsup.items()])
             raise LinterIssue(pkgbuild, unsup_str)
 
     def format(self, issues):

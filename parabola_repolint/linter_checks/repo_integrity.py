@@ -154,6 +154,33 @@ class PkgEntryDuplicatePkgbuilds(LinterCheckBase):
         return "\n".join(sorted(result))
 
 
+
+# pylint: disable=no-self-use
+class PkgEntryMissingPkgFile(LinterCheckBase):
+    '''
+  for the list of entries in a repo.db, check wether a built package exists that
+  backs the entry. The check reports an issue for each repo.db entry that is not
+  associatable with a valid built package.
+'''
+
+    name = 'pkgentry_missing_pkgfile'
+    check_type = LinterCheckType.PKGENTRY
+
+    header = 'repo.db entries with no valid built package'
+
+    def check(self, pkgentry):
+        ''' run the check '''
+        if not pkgentry.pkgfiles:
+            raise LinterIssue(pkgentry)
+
+    def format(self, issues):
+        ''' format the list of found issues '''
+        result = []
+        for issue in issues:
+            result.append('    %s' % issue[0])
+        return "\n".join(sorted(result))
+
+
 # pylint: disable=no-self-use
 class PkgFileMissingPkgbuild(LinterCheckBase):
     '''
@@ -197,6 +224,58 @@ class PkgFileDuplicatePkgbuilds(LinterCheckBase):
         ''' run the check '''
         if len(pkgfile.pkgbuilds) > 1:
             raise LinterIssue(pkgfile, pkgfile.pkgbuilds)
+
+    def format(self, issues):
+        ''' format the list of found issues '''
+        result = []
+        for issue in issues:
+            result.append('    %s (%s)' % (issue[0], ','.join(issue[1])))
+        return "\n".join(sorted(result))
+
+
+# pylint: disable=no-self-use
+class PkgFileMissingPkgEntry(LinterCheckBase):
+    '''
+  for the list of built packages, check wether a repo.db entry exists that refers
+  to the package. The check reports an issue for each built package that is not
+  referred to by a repo.db entry.
+'''
+
+    name = 'pkgfile_missing_pkgentry'
+    check_type = LinterCheckType.PKGFILE
+
+    header = 'built packages without a referring repo.db entry'
+
+    def check(self, pkgfile):
+        ''' run the check '''
+        if not pkgfile.pkgentries:
+            raise LinterIssue(pkgfile)
+
+    def format(self, issues):
+        ''' format the list of found issues '''
+        result = []
+        for issue in issues:
+            result.append('    %s' % issue[0])
+        return "\n".join(sorted(result))
+
+
+# pylint: disable=no-self-use
+class PkgFileDuplicatePkgEntries(LinterCheckBase):
+    '''
+  for the list of built packages, check that at most one repo.db entry exists
+  that refers to the package. The check reports an issue for each built package
+  that is referred to by multiple repo.db entries.
+'''
+
+    name = 'pkgfile_duplicate_pkgentries'
+    check_type = LinterCheckType.PKGFILE
+
+    header = 'built packages with duplicate referring repo.db entries'
+
+    def check(self, pkgfile):
+        ''' run the check '''
+        if len(pkgfile.pkgentries) > 1:
+            raise LinterIssue(pkgfile, pkgfile.pkgentries)
 
     def format(self, issues):
         ''' format the list of found issues '''
