@@ -9,6 +9,19 @@ problems, and runtime issues early and reliably, even for lesser used packages.
 
 The list of implemented checks is outlined below, with more checks to be added.
 
+repository redundancy checks
+----------------------------
+
+a number of checks for redundant entries in the repositories
+
+redundant_pkgentry_pcr
+~~~~~~~~~~~~~~~~~~~~~~
+
+for the list of entries in the parabola repos, check whether package is
+redundant, meaning an entry of the same name exists in one of the arch repos
+(currently core, extra and community). The check reports an issue whenever a
+redundant entry in a repo.db is found.
+
 repository integrity checks
 ---------------------------
 

@@ -15,7 +15,9 @@ class LinterCheckBase():
     ''' a base class for linter checks '''
 
     def __init__(self, linter, cache):
-        ''' an empty default constructor '''
+        ''' a default constructor '''
+        self._linter = linter
+        self._cache = cache
 
 
 class LinterIssue(Exception):

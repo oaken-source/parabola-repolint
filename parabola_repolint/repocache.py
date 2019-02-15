@@ -148,6 +148,11 @@ class PkgEntry():
         self._pkgfiles[arch].append(pkgfile)
 
     @property
+    def repo(self):
+        ''' produce the repo of the package '''
+        return self._repo
+
+    @property
     def pkgname(self):
         ''' produce the name of the package '''
         return self._data['NAME']
@@ -302,6 +307,11 @@ class PkgBuild():
         self._pkgfiles[arch].append(pkgfile)
 
     @property
+    def repo(self):
+        ''' produce the repo of the PKGBUILD '''
+        return self._repo
+
+    @property
     def valid(self):
         ''' indicate whether the PKGBUILD file is valid '''
         if self._valid is None:
@@ -409,10 +419,10 @@ class Repo():
 
         self._pkgbuilds = []
         self._pkgbuild_cache = {}
-        self._load_pkgbuilds()
-
-        logging.info('%s pkgbuilds: %s', name, self._pkgbuilds)
-        logging.info('%s pkgbuild_cache: %s', name, self._pkgbuild_cache)
+        if self._pkgbuild_dir is not None:
+            self._load_pkgbuilds()
+            logging.info('%s pkgbuilds: %s', name, self._pkgbuilds)
+            logging.info('%s pkgbuild_cache: %s', name, self._pkgbuild_cache)
 
         self._pkgentries = []
         self._pkgentries_cache = {}
@@ -482,7 +492,12 @@ class Repo():
                 if arch not in CONFIG.parabola.arches:
                     continue
 
+                tar = os.path.join(root, self._name + '.db')
+                mtime = os.path.getmtime(tar)
+
                 dst = os.path.join(self._pkgentries_dir, 'os', arch)
+                if os.path.isdir(dst) and os.path.getmtime(dst) > mtime:
+                    continue
 
                 os.makedirs(dst, exist_ok=True)
                 shutil.rmtree(dst)
@@ -520,6 +535,9 @@ class Repo():
         return '[%s]' % self._name
 
 
+ARCH_REPOS = {'core', 'extra', 'community'}
+
+
 class RepoCache():
     ''' the cache manager '''
 
@@ -534,22 +552,28 @@ class RepoCache():
         self._repo_names = CONFIG.parabola.repos
         self._arches = CONFIG.parabola.arches
 
-        self._repos = []
+        self._repos = {}
+        self._arch_repos = {}
 
     @property
     def pkgbuilds(self):
         ''' produce the list of pkgbuilds in all repos '''
-        return [p for r in self._repos for p in r.pkgbuilds]
+        return [p for r in self._repos.values() for p in r.pkgbuilds]
 
     @property
     def pkgentries(self):
         ''' produce the list of packages in the repo.db's '''
-        return [p for r in self._repos for p in r.pkgentries]
+        return [p for r in self._repos.values() for p in r.pkgentries]
 
     @property
     def pkgfiles(self):
         ''' produce the list of pkg.tar.xz files in all repos '''
-        return [p for r in self._repos for p in r.pkgfiles]
+        return [p for r in self._repos.values() for p in r.pkgfiles]
+
+    @property
+    def arch_repos(self):
+        ''' produce repo objects for core, extra and community '''
+        return self._arch_repos
 
     def load_repos(self, noupdate, ignore_cache):
         ''' update and load repo data from cache '''
@@ -563,11 +587,18 @@ class RepoCache():
             self._update_abslibre()
             self._update_packages()
 
+        for repo in ARCH_REPOS:
+            pkgentries_dir = os.path.join(self._pkgentries_dir, repo)
+            pkgfiles_dir = os.path.join(self._pkgfiles_dir, repo)
+            repo = Repo(repo, None, pkgentries_dir, pkgfiles_dir)
+            self._arch_repos[repo.name] = repo
+
         for repo in self._repo_names:
             pkgbuild_dir = os.path.join(self._abslibre_dir, repo)
             pkgentries_dir = os.path.join(self._pkgentries_dir, repo)
             pkgfiles_dir = os.path.join(self._pkgfiles_dir, repo)
-            self._repos.append(Repo(repo, pkgbuild_dir, pkgentries_dir, pkgfiles_dir))
+            repo = Repo(repo, pkgbuild_dir, pkgentries_dir, pkgfiles_dir)
+            self._repos[repo.name] = repo
 
     def _update_abslibre(self):
         ''' update the PKGBUILDs '''
