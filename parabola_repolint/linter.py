@@ -29,6 +29,7 @@ class LinterCheckType(enum.Enum):
     PKGBUILD = 1
     PKGFILE = 2
     PKGENTRY = 3
+    KEYRING = 4
 
 
 def _is_linter_check(cls):
@@ -88,6 +89,7 @@ class Linter():
             LinterCheckType.PKGBUILD: self._run_check_pkgbuild,
             LinterCheckType.PKGENTRY: self._run_check_pkgentry,
             LinterCheckType.PKGFILE: self._run_check_pkgfile,
+            LinterCheckType.KEYRING: self._run_check_keyring,
         }
 
         for check_type in LinterCheckType:
@@ -100,26 +102,29 @@ class Linter():
     def _run_check_pkgbuild(self, check):
         ''' run a PKGBUILD type check '''
         for pkgbuild in self._cache.pkgbuilds:
-            try:
-                check.check(pkgbuild)
-            except LinterIssue as i:
-                self._issues[check].append(i.args)
+            self._try_check(check, pkgbuild)
 
     def _run_check_pkgentry(self, check):
         ''' run a PKGENTRY type check '''
-        for package in self._cache.pkgentries:
-            try:
-                check.check(package)
-            except LinterIssue as i:
-                self._issues[check].append(i.args)
+        for pkgentry in self._cache.pkgentries:
+            self._try_check(check, pkgentry)
 
     def _run_check_pkgfile(self, check):
         ''' run a PKGFILE type check '''
-        for package in self._cache.pkgfiles:
-            try:
-                check.check(package)
-            except LinterIssue as i:
-                self._issues[check].append(i.args)
+        for pkgfile in self._cache.pkgfiles:
+            self._try_check(check, pkgfile)
+
+    def _run_check_keyring(self, check):
+        ''' run a KEYRING type check '''
+        for key in self._cache.keyring:
+            self._try_check(check, key)
+
+    def _try_check(self, check, *args, **kwargs):
+        ''' run a check and catch any LinterIssue '''
+        try:
+            check.check(*args, **kwargs)
+        except LinterIssue as i:
+            self._issues[check].append(i.args)
 
     def format(self):
         ''' return a formatted string of the linter issues '''

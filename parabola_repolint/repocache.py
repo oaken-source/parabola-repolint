@@ -10,6 +10,7 @@ import sh
 from xdg import BaseDirectory
 
 from parabola_repolint.config import CONFIG
+from parabola_repolint.gnupg import GPG_PACMAN
 
 
 class PkgFile():
@@ -548,12 +549,14 @@ class RepoCache():
         self._abslibre_dir = os.path.join(self._cache_dir, 'abslibre')
         self._pkgentries_dir = os.path.join(self._cache_dir, 'pkgentries')
         self._pkgfiles_dir = os.path.join(self._cache_dir, 'pkgfiles')
+        self._keyring_dir = os.path.join(self._cache_dir, 'keyring')
 
         self._repo_names = CONFIG.parabola.repos
         self._arches = CONFIG.parabola.arches
 
         self._repos = {}
         self._arch_repos = {}
+        self._keyring = []
 
     @property
     def pkgbuilds(self):
@@ -574,6 +577,11 @@ class RepoCache():
     def arch_repos(self):
         ''' produce repo objects for core, extra and community '''
         return self._arch_repos
+
+    @property
+    def keyring(self):
+        ''' produce the entries in the parabola keyring '''
+        return self._keyring
 
     def load_repos(self, noupdate, ignore_cache):
         ''' update and load repo data from cache '''
@@ -600,6 +608,9 @@ class RepoCache():
             repo = Repo(repo, pkgbuild_dir, pkgentries_dir, pkgfiles_dir)
             self._repos[repo.name] = repo
 
+        self._extract_keyring()
+        logging.info('keyring: %s', self._keyring)
+
     def _update_abslibre(self):
         ''' update the PKGBUILDs '''
         if not os.path.exists(self._abslibre_dir):
@@ -613,3 +624,24 @@ class RepoCache():
         local = self._pkgfiles_dir
         os.makedirs(local, exist_ok=True)
         sh.rsync('-a', '--delete-after', '--filter', 'P *.pkginfo', remote, local)
+
+    def _extract_keyring(self):
+        ''' extract the parabola keyring '''
+        cache = next(iter(self._repos['libre'].pkgentries_cache.values()))
+        keyring_pkgentries = cache['parabola-keyring']
+        keyring_pkgentry = keyring_pkgentries[0]
+        keyring_pkgfile = next(iter(keyring_pkgentry.pkgfiles.values()))[0]
+
+        src = keyring_pkgfile.path
+        dst = self._keyring_dir
+
+        if not os.path.isdir(dst) or os.path.getmtime(dst) > os.path.getmtime(src):
+            os.makedirs(dst, exist_ok=True)
+            shutil.rmtree(dst)
+            os.makedirs(dst, exist_ok=True)
+            sh.tar('xf', src, _cwd=dst)
+
+        keyring_file = os.path.join(
+            dst, 'usr', 'share', 'pacman', 'keyrings', 'parabola.gpg'
+        )
+        self._keyring = GPG_PACMAN.scan_keys(keyring_file)

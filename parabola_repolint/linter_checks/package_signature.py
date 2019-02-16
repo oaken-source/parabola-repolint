@@ -3,12 +3,42 @@ this are linter checks for package signatures
 '''
 
 import logging
-from urllib.parse import unquote
-
-import gnupg
+import datetime
 
 from parabola_repolint.linter import LinterIssue, LinterCheckBase, LinterCheckType
-from parabola_repolint.config import CONFIG
+from parabola_repolint.gnupg import GPG_PACMAN, get_uid
+
+
+# pylint: disable=no-self-use
+class KeyExpiryImminent(LinterCheckBase):
+    '''
+  for the list of keys in parabola.gpg, check whether they are expired, or are
+  about to expire. This check reports an issue for any expired key in the
+  keyring, as well as any key that is going to expire within the next 90 days,
+  indicating that the key should be extended and the keyring rebuilt to avoid
+  user-facing issues on system updates.
+'''
+
+    name = 'key_expiry_imminent'
+    check_type = LinterCheckType.KEYRING
+
+    header = 'keyring entries expired or about to expire'
+
+    def check(self, key):
+        ''' run the check '''
+        if not key['expires']:
+            return
+
+        expires = datetime.datetime.utcfromtimestamp(int(key['expires']))
+        if expires <= datetime.datetime.now() + datetime.timedelta(days=90):
+            raise LinterIssue(get_uid(key['keyid']), expires.strftime("%Y-%m-%d"))
+
+    def format(self, issues):
+        ''' format the list of found issues '''
+        result = []
+        for issue in issues:
+            result.append('    %s (%s)' % (issue[0], issue[1]))
+        return "\n".join(sorted(result))
 
 
 # pylint: disable=no-self-use
@@ -24,12 +54,6 @@ class InvalidSignature(LinterCheckBase):
 
     header = 'packages with invalid signatures'
 
-    def __init__(self, *args, **kwargs):
-        ''' constructor '''
-        super().__init__(*args, **kwargs)
-        self._gpg_pacman = gnupg.GPG(gnupghome=CONFIG.gnupg.gpgdir)
-        self._gpg_home = gnupg.GPG()
-
     def check(self, package):
         ''' run the check '''
         sigfile = "%s.sig" % package.path
@@ -41,14 +65,9 @@ class InvalidSignature(LinterCheckBase):
 
     def _check_sigfile(self, package, sig):
         ''' check whether signature and package match '''
-        verify = self._gpg_pacman.verify_file(sig, package.path)
+        verify = GPG_PACMAN.verify_file(sig, package.path)
         if not verify.valid:
-            uid = verify.key_id
-            key = self._gpg_home.search_keys(uid, CONFIG.gnupg.keyserver)
-            if key.uids:
-                uid = unquote(key.uids[0])
-            else:
-                logging.warning('%s: error in key resolution: (%s)', uid, key.__dict__)
+            uid = get_uid(verify.key_id)
             if verify.key_status == 'signing key has expired':
                 raise LinterIssue(package, 'signing key has expired (%s)' % uid)
             if verify.status == 'no public key':

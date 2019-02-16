@@ -127,7 +127,16 @@ writing, the architectures supported by parabola.
 package signature checks
 ------------------------
 
-a number of checks validating package signatures
+a number of checks validating package signatures and keyring entries
+
+key_expiry_imminent
+~~~~~~~~~~~~~~~~~~~
+
+for the list of keys in parabola.gpg, check whether they are expired, or are
+about to expire. This check reports an issue for any expired key in the
+keyring, as well as any key that is going to expire within the next 90 days,
+indicating that the key should be extended and the keyring rebuilt to avoid
+user-facing issues on system updates.
 
 invalid_checksum
 ~~~~~~~~~~~~~~~~
