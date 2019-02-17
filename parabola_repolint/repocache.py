@@ -13,6 +13,26 @@ from parabola_repolint.config import CONFIG
 from parabola_repolint.gnupg import GPG_PACMAN
 
 
+BUILDINFO_VALUE = [
+    'format',
+    'pkgname',
+    'pkgbase',
+    'pkgver',
+    'pkgarch',
+    'pkgbuild_sha256sum',
+    'packager',
+    'builddate',
+    'builddir',
+]
+BUILDINFO_SET = [
+    'buildenv',
+    'options',
+]
+BUILDINFO_LIST = [
+    'installed',
+]
+
+
 class PkgFile():
     ''' represent a parabola pkg.tar.xz file '''
 
@@ -24,22 +44,43 @@ class PkgFile():
         self._repoarch = repoarch
 
         mtime = os.path.getmtime(self._path)
-        cache_path = path + '.pkginfo'
 
-        self._data = {}
-        data = self._cached_pacinfo(cache_path, mtime)
+        self._pkginfo = {}
+        pkginfo = self._cached_pkginfo(path + '.pkginfo', mtime)
         cur = None
-        for line in data.splitlines():
+        for line in pkginfo.splitlines():
             if not line:
                 continue
             if line[16] == ':':
                 cur, line = line.split(':', 1)
                 cur = cur.strip()
             line = line.strip()
-            if cur in self._data:
-                self._data[cur] += ' ' + line
+            if cur in self._pkginfo:
+                self._pkginfo[cur] += ' ' + line
             else:
-                self._data[cur] = line
+                self._pkginfo[cur] = line
+
+        self._buildinfo = {}
+        # only parse .BUILDINFO for parabola packages
+        if repo.name in CONFIG.parabola.repos:
+            buildinfo = self._cached_buildinfo(path + '.buildinfo', mtime)
+            for line in buildinfo.splitlines():
+                key, value = line.split('=', 1)
+                key = key.strip()
+                value = value.strip()
+
+                if key in BUILDINFO_VALUE:
+                    self._buildinfo[key] = value
+                elif key in BUILDINFO_SET:
+                    if key not in self._buildinfo:
+                        self._buildinfo[key] = set()
+                    self._buildinfo[key].add(value)
+                elif key in BUILDINFO_LIST:
+                    if key not in self._buildinfo:
+                        self._buildinfo[key] = list()
+                    self._buildinfo[key].append(value)
+                else:
+                    logging.warning('unhandled BUILDINFO key: %s', key)
 
         pkgbuild_cache = repo.pkgbuild_cache.get(repoarch, {})
         self._pkgbuilds = pkgbuild_cache.get(self.pkgname, [])
@@ -51,7 +92,7 @@ class PkgFile():
         for pkgentry in self._pkgentries:
             pkgentry.register_pkgfile(self, repoarch)
 
-    def _cached_pacinfo(self, cachefile, mtime):
+    def _cached_pkginfo(self, cachefile, mtime):
         ''' get information from a package '''
         if os.path.isfile(cachefile) and os.path.getmtime(cachefile) > mtime:
             with open(cachefile, 'r') as infile:
@@ -62,6 +103,24 @@ class PkgFile():
             res = str(sh.pacman('-Qip', self._path))
         except sh.ErrorReturnCode:
             logging.exception('pacman -Qip failed for %s', self)
+
+        with open(cachefile, 'w') as outfile:
+            outfile.write(res)
+
+        return res
+
+    def _cached_buildinfo(self, cachefile, mtime):
+        ''' get build information from a package '''
+        if os.path.isfile(cachefile) and os.path.getmtime(cachefile) > mtime:
+            with open(cachefile, 'r') as infile:
+                return infile.read()
+
+        res = ''
+        try:
+            res = str(sh.tar('-xOf', self._path, '.BUILDINFO'))
+        except sh.ErrorReturnCode as ex:
+            if b'.BUILDINFO: Not found in archive' not in ex.stderr:
+                logging.exception('tar -xOf failed for %s', self)
 
         with open(cachefile, 'w') as outfile:
             outfile.write(res)
@@ -91,7 +150,7 @@ class PkgFile():
     @property
     def pkgname(self):
         ''' produce the name of the package '''
-        return self._data['Name']
+        return self._pkginfo['Name']
 
     @property
     def arch(self):
@@ -623,7 +682,7 @@ class RepoCache():
         remote = CONFIG.parabola.mirror
         local = self._pkgfiles_dir
         os.makedirs(local, exist_ok=True)
-        sh.rsync('-a', '--delete-after', '--filter', 'P *.pkginfo', remote, local)
+        sh.rsync('-a', '--delete-after', '--filter', 'P *.*info', remote, local)
 
     def _extract_keyring(self):
         ''' extract the parabola keyring '''

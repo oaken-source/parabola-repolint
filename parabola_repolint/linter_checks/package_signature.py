@@ -30,8 +30,12 @@ class KeyExpiryImminent(LinterCheckBase):
             return
 
         expires = datetime.datetime.utcfromtimestamp(int(key['expires']))
+        time = expires.strftime("%Y-%m-%d")
+
+        if expires < datetime.datetime.now():
+            raise LinterIssue(get_uid(key['keyid']), 'expired %s' % time)
         if expires <= datetime.datetime.now() + datetime.timedelta(days=90):
-            raise LinterIssue(get_uid(key['keyid']), expires.strftime("%Y-%m-%d"))
+            raise LinterIssue(get_uid(key['keyid']), 'expires %s' % time)
 
     def format(self, issues):
         ''' format the list of found issues '''
