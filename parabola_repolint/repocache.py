@@ -5,6 +5,7 @@ repo cache management classes
 import os
 import shutil
 import logging
+import datetime
 
 import sh
 from xdg import BaseDirectory
@@ -156,6 +157,17 @@ class PkgFile():
     def arch(self):
         ''' produce the architecture of the package '''
         return self._repoarch
+
+    @property
+    def build_date(self):
+        ''' produce the build date of the package '''
+        frmt = "%a %d %b %Y %I:%M:%S %p %Z"
+        return datetime.datetime.strptime(self._pkginfo['Build Date'], frmt)
+
+    @property
+    def buildinfo(self):
+        ''' produce the .BUILDINFO entries of the package '''
+        return self._buildinfo
 
     def __repr__(self):
         ''' produce a string representation '''
