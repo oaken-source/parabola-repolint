@@ -17,10 +17,18 @@ a number of checks for basic .pkg.tar.xz integrity
 pkgfile_missing_buildinfo
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-for the list of built packages in the repos, check wether each has an embedded
+for the list of built packages in the repos, check whether each has an embedded
 .BUILDINFO file, containing information about the build environment and the
 PKGBUILD the package is built from. This check reports an issue whenever a
 built package is found that has no .BUILDINFO file.
+
+pkgfile_bad_pkgbuild_digest
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+for the list of built packages in the repos, check whether the PKGBUILD digest
+stored in its .BUILDINFO matches the digest of the PKGBUILD file in abslibre.
+This check reports an issue whenever a mismatch is found between the PKGBULID
+digest stored in the package file and the PKGBUILD in abslibre.
 
 repository redundancy checks
 ----------------------------

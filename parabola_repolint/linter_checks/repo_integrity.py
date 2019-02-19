@@ -170,7 +170,7 @@ class PkgEntryMissingPkgFile(LinterCheckBase):
 
     def check(self, pkgentry):
         ''' run the check '''
-        if not pkgentry.pkgfiles:
+        if not pkgentry.pkgfile:
             raise LinterIssue(pkgentry)
 
     def format(self, issues):
@@ -197,13 +197,13 @@ class PkgFileMissingPkgbuild(LinterCheckBase):
     def check(self, pkgfile):
         ''' run the check '''
         if not pkgfile.pkgbuilds:
-            raise LinterIssue(pkgfile)
+            raise LinterIssue(pkgfile, pkgfile.build_date)
 
     def format(self, issues):
         ''' format the list of found issues '''
         result = []
         for issue in issues:
-            result.append('    %s' % issue[0])
+            result.append('    %s (built %s)' % (issue[0], issue[1]))
         return "\n".join(sorted(result))
 
 
@@ -249,13 +249,13 @@ class PkgFileMissingPkgEntry(LinterCheckBase):
     def check(self, pkgfile):
         ''' run the check '''
         if not pkgfile.pkgentries:
-            raise LinterIssue(pkgfile)
+            raise LinterIssue(pkgfile, pkgfile.build_date)
 
     def format(self, issues):
         ''' format the list of found issues '''
         result = []
         for issue in issues:
-            result.append('    %s' % issue[0])
+            result.append('    %s (built %s)' % (issue[0], issue[1]))
         return "\n".join(sorted(result))
 
 

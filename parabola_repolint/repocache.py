@@ -212,12 +212,15 @@ class PkgEntry():
             pkgbuild.register_pkgentry(self, repoarch)
 
         self._pkgfiles = {}
+        self._pkgfile = None
 
     def register_pkgfile(self, pkgfile, arch):
         ''' add a pkgfile to this pkgentry '''
         if arch not in self._pkgfiles:
             self._pkgfiles[arch] = []
         self._pkgfiles[arch].append(pkgfile)
+        if os.path.basename(pkgfile.path) == self._data['FILENAME']:
+            self._pkgfile = pkgfile
 
     @property
     def repo(self):
@@ -243,6 +246,11 @@ class PkgEntry():
     def pkgfiles(self):
         ''' produce the pkgfiles associated with this pkgentry '''
         return self._pkgfiles
+
+    @property
+    def pkgfile(self):
+        ''' produce the pkgfile matching this pkgentry exactly '''
+        return self._pkgfile
 
     def __repr__(self):
         ''' produce a string representation '''
@@ -356,7 +364,7 @@ class PkgBuild():
     def __init__(self, repo, path):
         ''' constructor '''
         self._repo = repo
-        self._path = os.path.dirname(path)
+        self._path = path
 
         self._valid = None
         self._srcinfo = {}
@@ -382,6 +390,11 @@ class PkgBuild():
     def repo(self):
         ''' produce the repo of the PKGBUILD '''
         return self._repo
+
+    @property
+    def path(self):
+        ''' produce the path to the pkgbuild '''
+        return self._path
 
     @property
     def valid(self):
@@ -423,10 +436,10 @@ class PkgBuild():
 
     def _load_metadata(self):
         ''' attempt to parse the PKGBUILD '''
-        mtime = os.path.getmtime(os.path.join(self._path, 'PKGBUILD'))
+        mtime = os.path.getmtime(self._path)
 
         os.environ.pop('CARCH', None)
-        si_file = os.path.join(self._path, '.srcinfo')
+        si_file = os.path.join(os.path.dirname(self._path), '.srcinfo')
         si_str = self._cached_makepkg(si_file, mtime, '--printsrcinfo')
 
         if not si_str:
@@ -442,9 +455,9 @@ class PkgBuild():
 
         for arch in self._arches.intersection(CONFIG.parabola.arches):
             os.environ['CARCH'] = arch
-            si_file = os.path.join(self._path, '.%s.srcinfo' % arch)
+            si_file = os.path.join(os.path.dirname(self._path), '.%s.srcinfo' % arch)
             si_str = self._cached_makepkg(si_file, mtime, '--printsrcinfo')
-            pl_file = os.path.join(self._path, '.%s.pkglist' % arch)
+            pl_file = os.path.join(os.path.dirname(self._path), '.%s.pkglist' % arch)
             pl_str = self._cached_makepkg(pl_file, mtime, '--packagelist')
             os.environ.pop('CARCH', None)
 
@@ -464,7 +477,7 @@ class PkgBuild():
 
         res = ''
         try:
-            res = str(sh.makepkg(*args, **kwargs, _cwd=self._path))
+            res = str(sh.makepkg(*args, **kwargs, _cwd=os.path.dirname(self._path)))
         except sh.ErrorReturnCode:
             logging.exception('makepkg failed for %s', self)
 
@@ -475,7 +488,8 @@ class PkgBuild():
 
     def __repr__(self):
         ''' a string representation '''
-        return '%s/%s/PKGBUILD' % (self._repo.name, os.path.basename(self._path))
+        path = os.path.basename(os.path.dirname(self._path))
+        return '%s/%s/PKGBUILD' % (self._repo.name, path)
 
 
 class Repo():
@@ -493,20 +507,18 @@ class Repo():
         self._pkgbuild_cache = {}
         if self._pkgbuild_dir is not None:
             self._load_pkgbuilds()
-            logging.info('%s pkgbuilds: %s', name, self._pkgbuilds)
-            logging.info('%s pkgbuild_cache: %s', name, self._pkgbuild_cache)
+            logging.info('%s pkgbuilds: %i', name, len(self._pkgbuilds))
 
         self._pkgentries = []
         self._pkgentries_cache = {}
         self._load_pkgentries()
 
-        logging.info('%s pkgentries: %s', name, self._pkgentries)
-        logging.info('%s pkgentries_cache: %s', name, self._pkgentries_cache)
+        logging.info('%s pkgentries: %i', name, len(self._pkgentries))
 
         self._pkgfiles = []
         self._load_pkgfiles()
 
-        logging.info('%s pkgfiles: %s', name, self._pkgfiles)
+        logging.info('%s pkgfiles: %i', name, len(self._pkgfiles))
 
     @property
     def name(self):
@@ -680,7 +692,7 @@ class RepoCache():
             self._repos[repo.name] = repo
 
         self._extract_keyring()
-        logging.info('keyring: %s', self._keyring)
+        logging.info('keyring entries: %i', len(self._keyring))
 
     def _update_abslibre(self):
         ''' update the PKGBUILDs '''
