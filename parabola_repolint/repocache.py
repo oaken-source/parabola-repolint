@@ -301,6 +301,7 @@ for ARCH in CONFIG.parabola.arches:
     SRCINFO_SET.extend([
         'depends_%s' % ARCH,
         'makedepends_%s' % ARCH,
+        'optdepends_%s' % ARCH,
     ])
     SRCINFO_LIST.extend([
         'source_%s' % ARCH,
