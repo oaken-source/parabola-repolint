@@ -65,7 +65,7 @@ class PkgFileBadPkgbuildDigest(LinterCheckBase):
         pkgbuild = pkgentry.pkgbuilds[0]
 
         with open(pkgbuild.path, 'rb') as infile:
-	        pkgbuild_sha = hashlib.sha256(infile.read()).hexdigest();
+            pkgbuild_sha = hashlib.sha256(infile.read()).hexdigest()
 
         if pkgfile.buildinfo['pkgbuild_sha256sum'] != pkgbuild_sha:
             raise LinterIssue(pkgfile, pkgfile.build_date)
