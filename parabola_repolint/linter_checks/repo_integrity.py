@@ -226,7 +226,10 @@ class PkgFileDuplicatePkgbuilds(LinterCheckBase):
     def check(self, pkgfile):
         ''' run the check '''
         if len(pkgfile.pkgbuilds) > 1:
-            raise LinterIssue(pkgfile, pkgfile.pkgbuilds)
+            duplicates = []
+            for pkgbuild in pkgfile.pkgbuilds:
+                duplicates.append(str(pkgbuild))
+            raise LinterIssue(pkgfile, duplicates)
 
     def format(self, issues):
         ''' format the list of found issues '''
