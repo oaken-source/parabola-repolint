@@ -3,6 +3,7 @@ repo cache management classes
 '''
 
 import os
+import json
 import shutil
 import logging
 import datetime
@@ -509,17 +510,27 @@ class Repo():
         if self._pkgbuild_dir is not None:
             self._load_pkgbuilds()
             logging.info('%s pkgbuilds: %i', name, len(self._pkgbuilds))
+            with open(os.path.join(self._pkgbuild_dir, '.pkgbuilds'), 'w') as out:
+                out.write(json.dumps(self._pkgbuilds, indent=4, sort_keys=True, default=str))
+            with open(os.path.join(self._pkgbuild_dir, '.pkgbuild_cache'), 'w') as out:
+                out.write(json.dumps(self._pkgbuild_cache, indent=4, sort_keys=True, default=str))
 
         self._pkgentries = []
         self._pkgentries_cache = {}
         self._load_pkgentries()
 
         logging.info('%s pkgentries: %i', name, len(self._pkgentries))
+        with open(os.path.join(self._pkgentries_dir, '.pkgentries'), 'w') as out:
+            out.write(json.dumps(self._pkgentries, indent=4, sort_keys=True, default=str))
+        with open(os.path.join(self._pkgentries_dir, '.pkgentries_cache'), 'w') as out:
+            out.write(json.dumps(self._pkgentries_cache, indent=4, sort_keys=True, default=str))
 
         self._pkgfiles = []
         self._load_pkgfiles()
 
         logging.info('%s pkgfiles: %i', name, len(self._pkgfiles))
+        with open(os.path.join(self._pkgfiles_dir, '.pkgfiles'), 'w') as out:
+            out.write(json.dumps(self._pkgfiles, indent=4, sort_keys=True, default=str))
 
     @property
     def name(self):
@@ -694,6 +705,8 @@ class RepoCache():
 
         self._extract_keyring()
         logging.info('keyring entries: %i', len(self._keyring))
+        with open(os.path.join(self._keyring_dir, '.keyring'), 'w') as out:
+            out.write(json.dumps(self._keyring, indent=4, sort_keys=True, default=str))
 
     def _update_abslibre(self):
         ''' update the PKGBUILDs '''
