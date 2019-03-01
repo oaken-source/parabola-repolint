@@ -604,8 +604,9 @@ class Repo():
                 pkgbuild = PkgBuild(self, os.path.join(root, 'PKGBUILD'))
 
                 i += 1
-                sys.stdout.write(' %s pkgbuilds: %i\r' % (self._name, i))
-                sys.stdout.flush()
+                if sys.stdout.isatty():
+                    sys.stdout.write(' %s pkgbuilds: %i\r' % (self._name, i))
+                    sys.stdout.flush()
 
                 self._pkgbuilds.append(pkgbuild)
                 for arch in pkgbuild.arches.intersection(CONFIG.parabola.arches):
@@ -651,8 +652,9 @@ class Repo():
                 pkgentry = PkgEntry(self, pkgentry_dir.path, arch.name)
 
                 i += 1
-                sys.stdout.write(' %s pkgentries: %i\r' % (self._name, i))
-                sys.stdout.flush()
+                if sys.stdout.isatty():
+                    sys.stdout.write(' %s pkgentries: %i\r' % (self._name, i))
+                    sys.stdout.flush()
 
                 self._pkgentries.append(pkgentry)
                 if pkgentry.arch not in self._pkgentries_cache:
@@ -674,8 +676,9 @@ class Repo():
                     self._pkgfiles.append(PkgFile(self, pkgfile_direntry.path, arch.name))
 
                     i += 1
-                    sys.stdout.write(' %s pkgfiles: %i\r' % (self._name, i))
-                    sys.stdout.flush()
+                    if sys.stdout.isatty():
+                        sys.stdout.write(' %s pkgfiles: %i\r' % (self._name, i))
+                        sys.stdout.flush()
 
 
     def __repr__(self):

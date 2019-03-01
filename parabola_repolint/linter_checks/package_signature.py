@@ -23,7 +23,7 @@ class SigningKeyExpiry(LinterCheckBase):
     name = 'signing_key_expiry'
     check_type = LinterCheckType.SIGNING_KEY
 
-    header = 'used signing keys in the keyring expired or about to expire'
+    header = 'signing keys expired or about to expire'
 
     def check(self, key):
         ''' run the check '''
@@ -61,7 +61,7 @@ class MasterKeyExpiry(LinterCheckBase):
     name = 'master_key_expiry'
     check_type = LinterCheckType.MASTER_KEY
 
-    header = 'master keys in the keyring expired or about to expire'
+    header = 'master keys expired or about to expire'
 
     def check(self, key):
         ''' run the check '''
