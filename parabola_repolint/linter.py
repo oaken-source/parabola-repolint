@@ -10,7 +10,7 @@ import socket
 import enum
 
 
-# pylint: disable=too-few-public-methods
+# pylint: disable=too-few-public-methods,no-self-use
 class LinterCheckBase():
     ''' a base class for linter checks '''
 
@@ -18,6 +18,14 @@ class LinterCheckBase():
         ''' a default constructor '''
         self._linter = linter
         self._cache = cache
+
+    def format(self, issues):
+        ''' a default formatter for found issues '''
+        res = []
+        for issue in issues:
+            res.append('    ' + issue[0] % issue[1:])
+        return "\n".join(sorted(res))
+
 
 
 class LinterIssue(Exception):
@@ -29,7 +37,8 @@ class LinterCheckType(enum.Enum):
     PKGBUILD = 1
     PKGFILE = 2
     PKGENTRY = 3
-    KEYRING = 4
+    SIGNING_KEY = 4
+    MASTER_KEY = 5
 
 
 def _is_linter_check(cls):
@@ -89,7 +98,8 @@ class Linter():
             LinterCheckType.PKGBUILD: self._run_check_pkgbuild,
             LinterCheckType.PKGENTRY: self._run_check_pkgentry,
             LinterCheckType.PKGFILE: self._run_check_pkgfile,
-            LinterCheckType.KEYRING: self._run_check_keyring,
+            LinterCheckType.SIGNING_KEY: self._run_check_signing_key,
+            LinterCheckType.MASTER_KEY: self._run_check_master_key,
         }
 
         for check_type in LinterCheckType:
@@ -114,8 +124,13 @@ class Linter():
         for pkgfile in self._cache.pkgfiles:
             self._try_check(check, pkgfile)
 
-    def _run_check_keyring(self, check):
-        ''' run a KEYRING type check '''
+    def _run_check_signing_key(self, check):
+        ''' run a SIGNING_KEY type check '''
+        for key in self._cache.key_cache.values():
+            self._try_check(check, key)
+
+    def _run_check_master_key(self, check):
+        ''' run a MASTER_KEY type check '''
         for key in self._cache.keyring:
             self._try_check(check, key)
 

@@ -150,17 +150,36 @@ package signature checks
 
 a number of checks validating package signatures and keyring entries
 
-key_expiry_imminent
-~~~~~~~~~~~~~~~~~~~
+signing_key_expiry
+~~~~~~~~~~~~~~~~~~
 
-for the list of keys in parabola.gpg, check whether they are expired, or are
-about to expire. This check reports an issue for any expired key in the
-keyring, as well as any key that is going to expire within the next 90 days,
-indicating that the key should be extended and the keyring rebuilt to avoid
-user-facing issues on system updates.
+for the list of signing keys and subkeys in parabola.gpg that are used to sign
+packages in the repos, check whether they are expired, or are about to expire.
+This check reports an issue for any expired signing key in the keyring, as well
+as any key that is going to expire within the next 90 days, indicating that the
+key should be extended and the keyring rebuilt to avoid user-facing issues on
+system updates.
 
-invalid_checksum
-~~~~~~~~~~~~~~~~
+master_key_expiry
+~~~~~~~~~~~~~~~~~
+
+for the list of master keys in parabola.gpg, check whether they are expired, or
+are about to expire. This check reports an issue for any expired master key in
+the keyring, as well as any key that is going to expire within the next 90
+days, indicating that the key should be extended and the keyring rebuilt to
+avoid user-facing issues on system updates.
+
+pkgentry_signature_mismatch
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+for the list of entries in the repo.db's, check whether the signature stored in
+the repository matches the signature stored in the detached signature file of
+the corresponding built package. This check reports an issue whenever the
+signature in the repo.db reports a different key then what was used to produce
+the built package signature.
+
+pkgfile_invalid_signature
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 this check validates the package signature against the pacman keyrings. It
 reports an issue whenever a package is signed by an unknown key, that is not

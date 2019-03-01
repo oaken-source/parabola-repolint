@@ -26,11 +26,4 @@ class RedundantPkgEntryPCR(LinterCheckBase):
 
         for repo in self._cache.arch_repos.values():
             if repo.pkgentries_cache.get(pkgentry.arch, []).get(pkgentry.pkgname, None):
-                raise LinterIssue(pkgentry, repo.name)
-
-    def format(self, issues):
-        ''' format the list of found issues '''
-        result = []
-        for issue in issues:
-            result.append('    %s (in %s)' % (issue[0], issue[1]))
-        return "\n".join(sorted(result))
+                raise LinterIssue('%s (in %s)', pkgentry, repo.name)

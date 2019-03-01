@@ -27,14 +27,7 @@ class PkgBuildMissingPkgEntries(LinterCheckBase):
                 if pkgname not in [p.pkgname for p in pkgbuild.pkgentries.get(arch, [])]:
                     missing.append('%s/%s' % (arch, pkgname))
         if missing:
-            raise LinterIssue(pkgbuild, missing)
-
-    def format(self, issues):
-        ''' format the list of found issues '''
-        result = []
-        for issue in issues:
-            result.append('    %s (%s)' % (issue[0], ','.join(issue[1])))
-        return "\n".join(sorted(result))
+            raise LinterIssue('%s (%s)', pkgbuild, ','.join(missing))
 
 
 # pylint: disable=no-self-use
@@ -61,14 +54,7 @@ class PkgBuildDuplicatePkgEntries(LinterCheckBase):
                 if len(pkgentries) > 1:
                     duplicate.append('%s/%s: %s' % (arch, pkgname, ','.join(pkgentries)))
         if duplicate:
-            raise LinterIssue(pkgbuild, duplicate)
-
-    def format(self, issues):
-        ''' format the list of found issues '''
-        result = []
-        for issue in issues:
-            result.append('    %s (%s)' % (issue[0], ','.join(issue[1])))
-        return "\n".join(sorted(result))
+            raise LinterIssue('%s (%s)', pkgbuild, ','.join(duplicate))
 
 
 # pylint: disable=no-self-use
@@ -92,14 +78,7 @@ class PkgBuildMissingPkgFiles(LinterCheckBase):
                 if pkgname not in [p.pkgname for p in pkgbuild.pkgfiles.get(arch, [])]:
                     missing.append('%s/%s' % (arch, pkgname))
         if missing:
-            raise LinterIssue(pkgbuild, missing)
-
-    def format(self, issues):
-        ''' format the list of found issues '''
-        result = []
-        for issue in issues:
-            result.append('    %s (%s)' % (issue[0], ','.join(issue[1])))
-        return "\n".join(sorted(result))
+            raise LinterIssue('%s (%s)', pkgbuild, ','.join(missing))
 
 
 # pylint: disable=no-self-use
@@ -118,14 +97,7 @@ class PkgEntryMissingPkgbuild(LinterCheckBase):
     def check(self, pkgentry):
         ''' run the check '''
         if not pkgentry.pkgbuilds:
-            raise LinterIssue(pkgentry)
-
-    def format(self, issues):
-        ''' format the list of found issues '''
-        result = []
-        for issue in issues:
-            result.append('    %s' % issue[0])
-        return "\n".join(sorted(result))
+            raise LinterIssue('%s', pkgentry)
 
 
 # pylint: disable=no-self-use
@@ -147,15 +119,7 @@ class PkgEntryDuplicatePkgbuilds(LinterCheckBase):
             duplicates = []
             for pkgbuild in pkgentry.pkgbuilds:
                 duplicates.append(str(pkgbuild))
-            raise LinterIssue(pkgentry, duplicates)
-
-    def format(self, issues):
-        ''' format the list of found issues '''
-        result = []
-        for issue in issues:
-            result.append('    %s (%s)' % (issue[0], ','.join(issue[1])))
-        return "\n".join(sorted(result))
-
+            raise LinterIssue('%s (%s)', pkgentry, ','.join(duplicates))
 
 
 # pylint: disable=no-self-use
@@ -174,14 +138,7 @@ class PkgEntryMissingPkgFile(LinterCheckBase):
     def check(self, pkgentry):
         ''' run the check '''
         if not pkgentry.pkgfile:
-            raise LinterIssue(pkgentry)
-
-    def format(self, issues):
-        ''' format the list of found issues '''
-        result = []
-        for issue in issues:
-            result.append('    %s' % issue[0])
-        return "\n".join(sorted(result))
+            raise LinterIssue('%s', pkgentry)
 
 
 # pylint: disable=no-self-use
@@ -200,14 +157,7 @@ class PkgFileMissingPkgbuild(LinterCheckBase):
     def check(self, pkgfile):
         ''' run the check '''
         if not pkgfile.pkgbuilds:
-            raise LinterIssue(pkgfile, pkgfile.build_date)
-
-    def format(self, issues):
-        ''' format the list of found issues '''
-        result = []
-        for issue in issues:
-            result.append('    %s (built %s)' % (issue[0], issue[1]))
-        return "\n".join(sorted(result))
+            raise LinterIssue('%s (built %s)', pkgfile, pkgfile.build_date)
 
 
 # pylint: disable=no-self-use
@@ -229,14 +179,7 @@ class PkgFileDuplicatePkgbuilds(LinterCheckBase):
             duplicates = []
             for pkgbuild in pkgfile.pkgbuilds:
                 duplicates.append(str(pkgbuild))
-            raise LinterIssue(pkgfile, duplicates)
-
-    def format(self, issues):
-        ''' format the list of found issues '''
-        result = []
-        for issue in issues:
-            result.append('    %s (%s)' % (issue[0], ','.join(issue[1])))
-        return "\n".join(sorted(result))
+            raise LinterIssue('%s (%s)', pkgfile, ','.join(duplicates))
 
 
 # pylint: disable=no-self-use
@@ -255,14 +198,7 @@ class PkgFileMissingPkgEntry(LinterCheckBase):
     def check(self, pkgfile):
         ''' run the check '''
         if not pkgfile.pkgentries:
-            raise LinterIssue(pkgfile, pkgfile.build_date)
-
-    def format(self, issues):
-        ''' format the list of found issues '''
-        result = []
-        for issue in issues:
-            result.append('    %s (built %s)' % (issue[0], issue[1]))
-        return "\n".join(sorted(result))
+            raise LinterIssue('%s (built %s)', pkgfile, pkgfile.build_date)
 
 
 # pylint: disable=no-self-use
@@ -281,11 +217,4 @@ class PkgFileDuplicatePkgEntries(LinterCheckBase):
     def check(self, pkgfile):
         ''' run the check '''
         if len(pkgfile.pkgentries) > 1:
-            raise LinterIssue(pkgfile, pkgfile.pkgentries)
-
-    def format(self, issues):
-        ''' format the list of found issues '''
-        result = []
-        for issue in issues:
-            result.append('    %s (%s)' % (issue[0], ','.join(issue[1])))
-        return "\n".join(sorted(result))
+            raise LinterIssue('%s (%s)', pkgfile, ','.join(pkgfile.pkgentries))

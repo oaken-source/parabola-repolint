@@ -26,14 +26,7 @@ class InvalidPkgbuild(LinterCheckBase):
     def check(self, pkgbuild):
         ''' run the check '''
         if not pkgbuild.valid:
-            raise LinterIssue(pkgbuild)
-
-    def format(self, issues):
-        ''' format the list of found issues '''
-        result = []
-        for issue in issues:
-            result.append('    %s' % issue[0])
-        return "\n".join(sorted(result))
+            raise LinterIssue('%s', pkgbuild)
 
 
 # pylint: disable=no-self-use
@@ -76,11 +69,4 @@ class UnsupportedArches(LinterCheckBase):
 
         if unsup:
             unsup_str = '; '.join(['%s: %s' % (p, ','.join(u)) for p, u in unsup.items()])
-            raise LinterIssue(pkgbuild, unsup_str)
-
-    def format(self, issues):
-        ''' format the list of found issues '''
-        result = []
-        for issue in issues:
-            result.append('    %s (%s)' % (issue[0], issue[1]))
-        return "\n".join(sorted(result))
+            raise LinterIssue('%s (%s)', pkgbuild, unsup_str)

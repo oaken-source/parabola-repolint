@@ -28,14 +28,7 @@ class PkgFileMissingBuildinfo(LinterCheckBase):
         pkgfile = pkgentry.pkgfile
 
         if not pkgfile.buildinfo:
-            raise LinterIssue(pkgfile, pkgfile.build_date)
-
-    def format(self, issues):
-        ''' format the list of found issues '''
-        result = []
-        for issue in issues:
-            result.append('    %s (built %s)' % (issue[0], issue[1]))
-        return "\n".join(sorted(result))
+            raise LinterIssue('%s (built %s)', pkgfile, pkgfile.build_date)
 
 
 # pylint: disable=no-self-use
@@ -68,11 +61,4 @@ class PkgFileBadPkgbuildDigest(LinterCheckBase):
             pkgbuild_sha = hashlib.sha256(infile.read()).hexdigest()
 
         if pkgfile.buildinfo['pkgbuild_sha256sum'] != pkgbuild_sha:
-            raise LinterIssue(pkgfile, pkgfile.build_date)
-
-    def format(self, issues):
-        ''' format the list of found issues '''
-        result = []
-        for issue in issues:
-            result.append('    %s (built %s)' % (issue[0], issue[1]))
-        return "\n".join(sorted(result))
+            raise LinterIssue('%s (built %s)', pkgfile, pkgfile.build_date)

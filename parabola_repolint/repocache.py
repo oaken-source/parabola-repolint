@@ -3,6 +3,7 @@ repo cache management classes
 '''
 
 import os
+import sys
 import json
 import shutil
 import logging
@@ -84,6 +85,8 @@ class PkgFile():
                 else:
                     logging.warning('unhandled BUILDINFO key: %s', key)
 
+        self._siginfo = self._cached_siginfo(path + '.siginfo', mtime)
+
         pkgbuild_cache = repo.pkgbuild_cache.get(repoarch, {})
         self._pkgbuilds = pkgbuild_cache.get(self.pkgname, [])
         for pkgbuild in self._pkgbuilds:
@@ -129,6 +132,21 @@ class PkgFile():
 
         return res
 
+    def _cached_siginfo(self, cachefile, mtime):
+        ''' get signature information from a package '''
+        if os.path.isfile(cachefile) and os.path.getmtime(cachefile) > mtime:
+            with open(cachefile, 'r') as infile:
+                return json.loads(infile.read())
+
+        sigfile = "%s.sig" % self._path
+        with open(sigfile, 'rb') as sig:
+            res = GPG_PACMAN.verify_file(sig, self._path).__dict__
+
+        with open(cachefile, 'w') as outfile:
+            outfile.write(json.dumps(res, default=str))
+
+        return res
+
     @property
     def path(self):
         ''' produce the path to the package file '''
@@ -169,6 +187,17 @@ class PkgFile():
     def buildinfo(self):
         ''' produce the .BUILDINFO entries of the package '''
         return self._buildinfo
+
+    @property
+    def siginfo(self):
+        ''' produce the signature info of the package '''
+        return self._siginfo
+
+    def link_keyring(self, key_cache):
+        ''' link the package to its corresponding signing key '''
+        signing_key = key_cache.get(self._siginfo['key_id'], None)
+        if signing_key is not None:
+            signing_key['packages'].append(self)
 
     def __repr__(self):
         ''' produce a string representation '''
@@ -232,6 +261,11 @@ class PkgEntry():
     def pkgname(self):
         ''' produce the name of the package '''
         return self._data['NAME']
+
+    @property
+    def pgpsig(self):
+        ''' produce the base64 encoded pgp signature of the package '''
+        return self._data['PGPSIG']
 
     @property
     def arch(self):
@@ -564,9 +598,15 @@ class Repo():
 
     def _load_pkgbuilds(self):
         ''' load the pkgbuilds from abslibre '''
+        i = 0
         for root, _, files in os.walk(self._pkgbuild_dir):
             if 'PKGBUILD' in files:
                 pkgbuild = PkgBuild(self, os.path.join(root, 'PKGBUILD'))
+
+                i += 1
+                sys.stdout.write(' %s pkgbuilds: %i\r' % (self._name, i))
+                sys.stdout.flush()
+
                 self._pkgbuilds.append(pkgbuild)
                 for arch in pkgbuild.arches.intersection(CONFIG.parabola.arches):
                     if arch not in self._pkgbuild_cache:
@@ -582,16 +622,16 @@ class Repo():
 
     def _load_pkgentries(self):
         ''' extract and then load the entries in the db.tar.xz '''
-        for root, _, files in os.walk(self._pkgfiles_dir):
-            if '%s.db' % self._name in files:
-                arch = os.path.basename(root)
-                if arch not in CONFIG.parabola.arches:
-                    continue
+        arches_dir = os.path.join(self._pkgfiles_dir, 'os')
+        for arch in os.scandir(arches_dir):
+            if arch.name not in CONFIG.parabola.arches:
+                continue
 
-                tar = os.path.join(root, self._name + '.db')
-                mtime = os.path.getmtime(tar)
+            repo_file = os.path.join(arch.path, '%s.db' % self._name)
+            if os.path.exists(repo_file):
+                mtime = os.path.getmtime(repo_file)
 
-                dst = os.path.join(self._pkgentries_dir, 'os', arch)
+                dst = os.path.join(self._pkgentries_dir, 'os', arch.name)
                 if os.path.isdir(dst) and os.path.getmtime(dst) > mtime:
                     continue
 
@@ -599,15 +639,21 @@ class Repo():
                 shutil.rmtree(dst)
                 os.makedirs(dst, exist_ok=True)
 
-                sh.tar('xf', os.path.join(root, self._name + '.db'), _cwd=dst)
+                sh.tar('xf', repo_file, _cwd=dst)
 
-        for root, _, files in os.walk(self._pkgentries_dir):
-            if 'desc' in files:
-                arch = os.path.basename(os.path.dirname(root))
-                if arch not in CONFIG.parabola.arches:
-                    continue
+        i = 0
+        arches_dir = os.path.join(self._pkgentries_dir, 'os')
+        for arch in os.scandir(arches_dir):
+            if arch.name not in CONFIG.parabola.arches:
+                continue
 
-                pkgentry = PkgEntry(self, root, arch)
+            for pkgentry_dir in os.scandir(arch.path):
+                pkgentry = PkgEntry(self, pkgentry_dir.path, arch.name)
+
+                i += 1
+                sys.stdout.write(' %s pkgentries: %i\r' % (self._name, i))
+                sys.stdout.flush()
+
                 self._pkgentries.append(pkgentry)
                 if pkgentry.arch not in self._pkgentries_cache:
                     self._pkgentries_cache[pkgentry.arch] = {}
@@ -617,14 +663,20 @@ class Repo():
 
     def _load_pkgfiles(self):
         ''' load the pkg.tar.xz files from the repo '''
-        for root, _, files in os.walk(self._pkgfiles_dir):
-            arch = os.path.basename(root)
-            if arch not in CONFIG.parabola.arches:
+        i = 0
+        arches_dir = os.path.join(self._pkgfiles_dir, 'os')
+        for arch in os.scandir(arches_dir):
+            if arch.name not in CONFIG.parabola.arches:
                 continue
 
-            for pkg in files:
-                if pkg.endswith('.pkg.tar.xz'):
-                    self._pkgfiles.append(PkgFile(self, os.path.join(root, pkg), arch))
+            for pkgfile_direntry in os.scandir(arch.path):
+                if pkgfile_direntry.name.endswith('.pkg.tar.xz'):
+                    self._pkgfiles.append(PkgFile(self, pkgfile_direntry.path, arch.name))
+
+                    i += 1
+                    sys.stdout.write(' %s pkgfiles: %i\r' % (self._name, i))
+                    sys.stdout.flush()
+
 
     def __repr__(self):
         ''' produce a string representation of the repo '''
@@ -652,6 +704,7 @@ class RepoCache():
         self._repos = {}
         self._arch_repos = {}
         self._keyring = []
+        self._key_cache = {}
 
     @property
     def pkgbuilds(self):
@@ -677,6 +730,11 @@ class RepoCache():
     def keyring(self):
         ''' produce the entries in the parabola keyring '''
         return self._keyring
+
+    @property
+    def key_cache(self):
+        ''' produce a dict of signing (sub) keys in the parabola keyring '''
+        return self._key_cache
 
     def load_repos(self, noupdate, ignore_cache):
         ''' update and load repo data from cache '''
@@ -707,6 +765,11 @@ class RepoCache():
         logging.info('keyring entries: %i', len(self._keyring))
         with open(os.path.join(self._keyring_dir, '.keyring'), 'w') as out:
             out.write(json.dumps(self._keyring, indent=4, sort_keys=True, default=str))
+        with open(os.path.join(self._keyring_dir, '.key_cache'), 'w') as out:
+            out.write(json.dumps(self._key_cache, indent=4, sort_keys=True, default=str))
+
+        for pkgfile in self.pkgfiles:
+            pkgfile.link_keyring(self._key_cache)
 
     def _update_abslibre(self):
         ''' update the PKGBUILDs '''
@@ -742,3 +805,11 @@ class RepoCache():
             dst, 'usr', 'share', 'pacman', 'keyrings', 'parabola.gpg'
         )
         self._keyring = GPG_PACMAN.scan_keys(keyring_file)
+        for key in self._keyring:
+            key['packages'] = []
+            self._key_cache[key['keyid']] = key
+            for key_id, subkey in key['subkey_info'].items():
+                if 's' in subkey['cap']:
+                    subkey['packages'] = []
+                    self._key_cache[key_id] = subkey
+                    self._key_cache[key_id]['master_key'] = key['keyid']

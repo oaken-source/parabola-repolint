@@ -5,3 +5,6 @@ unsafe-load-any-extension=yes
 [TYPECHECK]
 ignored-classes=Bunch
 ignored-modules=sh
+
+[MESSAGES CONTROL]
+disable=W0715
