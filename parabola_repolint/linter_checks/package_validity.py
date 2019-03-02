@@ -28,7 +28,26 @@ class PkgFileMissingBuildinfo(LinterCheckBase):
         pkgfile = pkgentry.pkgfile
 
         if not pkgfile.buildinfo:
-            raise LinterIssue('%s (built %s)', pkgfile, pkgfile.build_date)
+            raise LinterIssue('%s (built %s)', pkgfile, pkgfile.builddate)
+
+
+# pylint: disable=no-self-use
+class PkgFileMissingPkginfo(LinterCheckBase):
+    '''
+  for the list of built packages in the repos, check whether each has an embedded
+  .PKGINFO file, containing information about the package. This check reports an
+  issue whenever a built package is found that has no .PKGINFO file.
+'''
+
+    name = 'pkgfile_missing_pkginfo'
+    check_type = LinterCheckType.PKGFILE
+
+    header = 'built packages with no .PKGINFO file'
+
+    def check(self, pkgfile):
+        ''' run the check '''
+        if not pkgfile.pkginfo:
+            raise LinterIssue('%s (built %s)', pkgfile, pkgfile.builddate)
 
 
 # pylint: disable=no-self-use
@@ -61,4 +80,4 @@ class PkgFileBadPkgbuildDigest(LinterCheckBase):
             pkgbuild_sha = hashlib.sha256(infile.read()).hexdigest()
 
         if pkgfile.buildinfo['pkgbuild_sha256sum'] != pkgbuild_sha:
-            raise LinterIssue('%s (built %s)', pkgfile, pkgfile.build_date)
+            raise LinterIssue('%s (built %s)', pkgfile, pkgfile.builddate)

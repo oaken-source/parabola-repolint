@@ -7,7 +7,6 @@ import sys
 import json
 import shutil
 import logging
-import datetime
 
 import sh
 from xdg import BaseDirectory
@@ -35,6 +34,33 @@ BUILDINFO_LIST = [
     'installed',
 ]
 
+PKGINFO_VALUE = [
+    'pkgbase',
+    'pkgname',
+    'pkgver',
+    'pkgdesc',
+    'url',
+    'builddate',
+    'packager',
+    'size',
+    'arch',
+]
+PKGINFO_SET = [
+    'license',
+    'depend',
+    'optdepend',
+    'makedepend',
+    'checkdepend',
+    'provides',
+    'replaces',
+    'conflict',
+    'group',
+    'makepkgopt',
+]
+PKGINFO_LIST = [
+    'backup',
+]
+
 
 class PkgFile():
     ''' represent a parabola pkg.tar.xz file '''
@@ -50,18 +76,26 @@ class PkgFile():
 
         self._pkginfo = {}
         pkginfo = self._cached_pkginfo(path + '.pkginfo', mtime)
-        cur = None
         for line in pkginfo.splitlines():
-            if not line:
+            if line.startswith('#'):
                 continue
-            if line[16] == ':':
-                cur, line = line.split(':', 1)
-                cur = cur.strip()
-            line = line.strip()
-            if cur in self._pkginfo:
-                self._pkginfo[cur] += ' ' + line
+
+            key, value = line.split('=', 1)
+            key = key.strip()
+            value = value.strip()
+
+            if key in PKGINFO_VALUE:
+                self._pkginfo[key] = value
+            elif key in PKGINFO_SET:
+                if key not in self._pkginfo:
+                    self._pkginfo[key] = set()
+                self._pkginfo[key].add(value)
+            elif key in PKGINFO_LIST:
+                if key not in self._pkginfo:
+                    self._pkginfo[key] = list()
+                self._pkginfo[key].append(value)
             else:
-                self._pkginfo[cur] = line
+                logging.warning('unhandled PKGINFO key: %s', key)
 
         self._buildinfo = {}
         # only parse .BUILDINFO for parabola packages
@@ -105,9 +139,10 @@ class PkgFile():
 
         res = ''
         try:
-            res = str(sh.pacman('-Qip', self._path))
-        except sh.ErrorReturnCode:
-            logging.exception('pacman -Qip failed for %s', self)
+            res = str(sh.tar('-xOf', self._path, '.PKGINFO'))
+        except sh.ErrorReturnCode as ex:
+            if b'.PKGINFO: Not found in archive' not in ex.stderr:
+                logging.exception('tar -xOf failed for %s', self)
 
         with open(cachefile, 'w') as outfile:
             outfile.write(res)
@@ -170,7 +205,7 @@ class PkgFile():
     @property
     def pkgname(self):
         ''' produce the name of the package '''
-        return self._pkginfo['Name']
+        return self._pkginfo['pkgname']
 
     @property
     def arch(self):
@@ -178,10 +213,14 @@ class PkgFile():
         return self._repoarch
 
     @property
-    def build_date(self):
+    def builddate(self):
         ''' produce the build date of the package '''
-        frmt = "%a %d %b %Y %I:%M:%S %p %Z"
-        return datetime.datetime.strptime(self._pkginfo['Build Date'], frmt)
+        return int(self._pkginfo['builddate'])
+
+    @property
+    def pkginfo(self):
+        ''' produce the .PKGINFO entries of the package '''
+        return self._pkginfo
 
     @property
     def buildinfo(self):

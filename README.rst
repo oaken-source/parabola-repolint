@@ -22,6 +22,13 @@ for the list of built packages in the repos, check whether each has an embedded
 PKGBUILD the package is built from. This check reports an issue whenever a
 built package is found that has no .BUILDINFO file.
 
+pkgfile_missing_pkginfo
+~~~~~~~~~~~~~~~~~~~~~~~
+
+for the list of built packages in the repos, check whether each has an embedded
+.PKGINFO file, containing information about the package. This check reports an
+issue whenever a built package is found that has no .PKGINFO file.
+
 pkgfile_bad_pkgbuild_digest
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

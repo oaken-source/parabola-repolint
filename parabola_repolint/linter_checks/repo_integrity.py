@@ -157,7 +157,7 @@ class PkgFileMissingPkgbuild(LinterCheckBase):
     def check(self, pkgfile):
         ''' run the check '''
         if not pkgfile.pkgbuilds:
-            raise LinterIssue('%s (built %s)', pkgfile, pkgfile.build_date)
+            raise LinterIssue('%s (built %s)', pkgfile, pkgfile.builddate)
 
 
 # pylint: disable=no-self-use
@@ -198,7 +198,7 @@ class PkgFileMissingPkgEntry(LinterCheckBase):
     def check(self, pkgfile):
         ''' run the check '''
         if not pkgfile.pkgentries:
-            raise LinterIssue('%s (built %s)', pkgfile, pkgfile.build_date)
+            raise LinterIssue('%s (built %s)', pkgfile, pkgfile.builddate)
 
 
 # pylint: disable=no-self-use
