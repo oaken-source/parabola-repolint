@@ -4,6 +4,7 @@ repolint results publishing helpers
 
 import os
 import time
+import lzma
 import tempfile
 import smtplib
 
@@ -92,5 +93,5 @@ def write_log(filename, contents):
     dst = os.path.expanduser(CONFIG.notify.logfile_dest)
     os.makedirs(dst, exist_ok=True)
 
-    with open(os.path.join(dst, filename), 'w') as logfile:
+    with lzma.open(os.path.join(dst, filename) + '.xz', 'wt') as logfile:
         logfile.write(contents)
