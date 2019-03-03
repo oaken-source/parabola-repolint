@@ -15,7 +15,7 @@ from parabola_repolint.notify import etherpad_replace, send_mail, write_log
 
 def make_argparser(linter):
     ''' produce the argparse object '''
-    checks = "\n  " + "\n  ".join(sorted(linter.checks))
+    checks = "\n  " + "\n  ".join(sorted(map(str, linter.checks)))
     parser = argparse.ArgumentParser(
         description='parabola package linter',
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -40,7 +40,7 @@ def make_argparser(linter):
         '-c',
         '--checks',
         type=lambda a: set() if not a else set(s.strip() for s in a.split(',')),
-        default=','.join(linter.checks),
+        default=','.join(map(str, linter.checks)),
         help='comma-separated list of checks to perform'
     )
 
@@ -62,11 +62,11 @@ def checked_main(args):
 
     args = make_argparser(linter).parse_args(args)
 
-    diff = args.checks.union(args.skip_checks).difference(linter.checks)
+    diff = args.checks.union(args.skip_checks).difference(map(str, linter.checks))
     if diff:
         logging.warning("unrecognized linter checks: %s", ', '.join(diff))
 
-    checks = args.checks.intersection(linter.checks).difference(args.skip_checks)
+    checks = args.checks.intersection(map(str, linter.checks)).difference(args.skip_checks)
     linter.load_checks(checks)
     cache.load_repos(args.noupdate, args.ignore_cache)
     linter.run_checks()

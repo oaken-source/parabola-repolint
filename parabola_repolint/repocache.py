@@ -99,26 +99,24 @@ class PkgFile():
                 logging.warning('unhandled PKGINFO key: %s', key)
 
         self._buildinfo = {}
-        # only parse .BUILDINFO for parabola packages
-        if repo.name in CONFIG.parabola.repos:
-            buildinfo = self._cached_buildinfo(path + '.buildinfo', mtime)
-            for line in buildinfo.splitlines():
-                key, value = line.split('=', 1)
-                key = key.strip()
-                value = value.strip()
+        buildinfo = self._cached_buildinfo(path + '.buildinfo', mtime)
+        for line in buildinfo.splitlines():
+            key, value = line.split('=', 1)
+            key = key.strip()
+            value = value.strip()
 
-                if key in BUILDINFO_VALUE:
-                    self._buildinfo[key] = value
-                elif key in BUILDINFO_SET:
-                    if key not in self._buildinfo:
-                        self._buildinfo[key] = set()
-                    self._buildinfo[key].add(value)
-                elif key in BUILDINFO_LIST:
-                    if key not in self._buildinfo:
-                        self._buildinfo[key] = list()
-                    self._buildinfo[key].append(value)
-                else:
-                    logging.warning('unhandled BUILDINFO key: %s', key)
+            if key in BUILDINFO_VALUE:
+                self._buildinfo[key] = value
+            elif key in BUILDINFO_SET:
+                if key not in self._buildinfo:
+                    self._buildinfo[key] = set()
+                self._buildinfo[key].add(value)
+            elif key in BUILDINFO_LIST:
+                if key not in self._buildinfo:
+                    self._buildinfo[key] = list()
+                self._buildinfo[key].append(value)
+            else:
+                logging.warning('unhandled BUILDINFO key: %s', key)
 
         self._siginfo = self._cached_siginfo(path + '.siginfo', mtime)
 
@@ -838,7 +836,7 @@ class RepoCache():
         src = keyring_pkgfile.path
         dst = self._keyring_dir
 
-        if not os.path.isdir(dst) or os.path.getmtime(dst) > os.path.getmtime(src):
+        if not os.path.isdir(dst) or os.path.getmtime(dst) <= os.path.getmtime(src):
             os.makedirs(dst, exist_ok=True)
             shutil.rmtree(dst)
             os.makedirs(dst, exist_ok=True)
