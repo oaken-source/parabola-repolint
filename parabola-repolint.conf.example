@@ -13,6 +13,7 @@ notify:
   smtp_receiver: maintenance@lists.parabola.nu
   smtp_login: null
   smtp_password: null
+  logfile_dest: ~/.cache/parabola-repolint/output
 
 gnupg:
   gpgdir: /etc/pacman.d/gnupg/

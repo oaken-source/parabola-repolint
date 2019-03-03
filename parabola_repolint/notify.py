@@ -1,16 +1,22 @@
 '''
-functions to interface with an etherpad instance
+repolint results publishing helpers
 '''
 
+import os
 import time
 import tempfile
+import smtplib
 
 import selenium
 import splinter
 
+from parabola_repolint.config import CONFIG
 
-def pad_replace(pad, content):
+
+def etherpad_replace(content):
     ''' replace the pads content with the given data '''
+    pad = CONFIG.notify.etherpad_url
+
     browser = splinter.Browser(headless=True)
     browser.visit(pad)
 
@@ -54,3 +60,37 @@ def pad_replace(pad, content):
         browser.driver.switch_to_alert().accept()
         time.sleep(1)
         browser.quit()
+
+
+def send_mail(subject, body):
+    ''' send a mail to the maintenance list '''
+    host = CONFIG.notify.smtp_host
+    port = int(CONFIG.notify.smtp_port)
+
+    sender = CONFIG.notify.smtp_sender
+    receiver = CONFIG.notify.smtp_receiver
+
+    login = CONFIG.notify.smtp_login
+    password = CONFIG.notify.smtp_password
+
+    message = '''\
+From: %s
+To: %s
+Subject: %s
+
+%s''' % (sender, receiver, subject, body)
+
+    with smtplib.SMTP(host, port) as smtp:
+        smtp.ehlo()
+        smtp.starttls()
+        smtp.login(login, password)
+        smtp.sendmail(sender, [receiver], message)
+
+
+def write_log(filename, contents):
+    ''' produce a logfile with linter results '''
+    dst = os.path.expanduser(CONFIG.notify.logfile_dest)
+    os.makedirs(dst, exist_ok=True)
+
+    with open(os.path.join(dst, filename), 'w') as logfile:
+        logfile.write(contents)
