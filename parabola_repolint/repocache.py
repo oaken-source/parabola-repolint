@@ -384,6 +384,16 @@ class PkgEntry():
         return set(self._data.get('DEPENDS', '').split())
 
     @property
+    def makedepends(self):
+        ''' produce the build time dependencies of the package '''
+        return set(self._data.get('MAKEDEPENDS', '').split())
+
+    @property
+    def checkdepends(self):
+        ''' produce the check time dependencies of the package '''
+        return set(self._data.get('CHECKDEPENDS', '').split())
+
+    @property
     def arch(self):
         ''' produce the architecture of the package '''
         return self._repoarch

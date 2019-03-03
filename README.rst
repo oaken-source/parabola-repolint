@@ -205,3 +205,21 @@ depends() array of the package are satisfiable with the provides() entries of
 the packages in the repositories core, extra, community, and the ones
 configured in CONFIG.parabola.repos. This check reports an issue whenever a
 depends() entry is found that is not satisfiable.
+
+unsatisfiable_makedepends
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+for the list of entries in the repo.db's check that all entries in the
+makedepends() array of the package are satisfiable with the provides() entries
+of the packages in the repositories core, extra, community, and the ones
+configured in CONFIG.parabola.repos. This check reports an issue whenever a
+makedepends() entry is found that is not satisfiable.
+
+unsatisfiable_checkdepends
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+for the list of entries in the repo.db's check that all entries in the
+checkdepends() array of the package are satisfiable with the provides() entries
+of the packages in the repositories core, extra, community, and the ones
+configured in CONFIG.parabola.repos. This check reports an issue whenever a
+checkdepends() entry is found that is not satisfiable.
