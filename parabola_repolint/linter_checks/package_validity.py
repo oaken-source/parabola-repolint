@@ -28,7 +28,7 @@ class PkgFileMissingBuildinfo(LinterCheckBase):
         pkgfile = pkgentry.pkgfile
 
         if not pkgfile.buildinfo:
-            raise LinterIssue('%s (built %s)', pkgfile, pkgfile.builddate)
+            raise LinterIssue('%s (built %s)', pkgfile, pkgfile.builddate.strftime("%Y-%m-%d %H:%M:%S"))
 
 
 # pylint: disable=no-self-use
@@ -47,7 +47,7 @@ class PkgFileMissingPkginfo(LinterCheckBase):
     def check(self, pkgfile):
         ''' run the check '''
         if not pkgfile.pkginfo:
-            raise LinterIssue('%s (built %s)', pkgfile, pkgfile.builddate)
+            raise LinterIssue('%s (built %s)', pkgfile, pkgfile.builddate.strftime("%Y-%m-%d %H:%M:%S"))
 
 
 # pylint: disable=no-self-use
@@ -80,4 +80,4 @@ class PkgFileBadPkgbuildDigest(LinterCheckBase):
             pkgbuild_sha = hashlib.sha256(infile.read()).hexdigest()
 
         if pkgfile.buildinfo['pkgbuild_sha256sum'] != pkgbuild_sha:
-            raise LinterIssue('%s (built %s)', pkgfile, pkgfile.builddate)
+            raise LinterIssue('%s (built %s)', pkgfile, pkgfile.builddate.strftime("%Y-%m-%d %H:%M:%S"))

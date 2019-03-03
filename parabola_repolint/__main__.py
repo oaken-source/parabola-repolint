@@ -11,6 +11,7 @@ from parabola_repolint.config import CONFIG
 from parabola_repolint.linter import Linter
 from parabola_repolint.repocache import RepoCache
 from parabola_repolint.etherpad import pad_replace
+from parabola_repolint.mail import send_mail
 
 
 def make_argparser(linter):
@@ -73,7 +74,11 @@ def checked_main(args):
 
     res = linter.format()
     logging.info(res)
-    pad_replace(CONFIG.parabola.pad_url, res)
+
+    if CONFIG.notify.etherpad_url:
+        pad_replace(CONFIG.notify.etherpad_url, res)
+    if CONFIG.notify.smtp_host:
+        send_mail(res)
 
     logging.warning(linter.short_format())
 

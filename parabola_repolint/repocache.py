@@ -7,6 +7,7 @@ import sys
 import json
 import shutil
 import logging
+import datetime
 
 import sh
 from xdg import BaseDirectory
@@ -215,7 +216,7 @@ class PkgFile():
     @property
     def builddate(self):
         ''' produce the build date of the package '''
-        return int(self._pkginfo['builddate'])
+        return datetime.datetime.fromtimestamp(int(self._pkginfo['builddate']))
 
     @property
     def pkginfo(self):
