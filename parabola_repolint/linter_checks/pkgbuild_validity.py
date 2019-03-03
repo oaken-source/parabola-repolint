@@ -9,7 +9,6 @@ from parabola_repolint.config import CONFIG
 KNOWN_ARCHES = CONFIG.parabola.arches
 
 
-# pylint: disable=no-self-use
 class InvalidPkgbuild(LinterCheckBase):
     '''
   this check tests for syntactical problems with the PKGBUILD file itself,
@@ -23,13 +22,13 @@ class InvalidPkgbuild(LinterCheckBase):
 
     header = 'invalid PKGBUILDs'
 
+    # pylint: disable=no-self-use
     def check(self, pkgbuild):
         ''' run the check '''
         if not pkgbuild.valid:
             raise LinterIssue('%s', pkgbuild)
 
 
-# pylint: disable=no-self-use
 class UnsupportedArches(LinterCheckBase):
     '''
   this check tests for PKGBUILD files that list archictectures in the `arch`
@@ -46,6 +45,7 @@ class UnsupportedArches(LinterCheckBase):
 
     header = 'PKGBUILDs with unsupported arches'
 
+    # pylint: disable=no-self-use
     def check(self, pkgbuild):
         ''' run the check '''
         if not pkgbuild.valid:

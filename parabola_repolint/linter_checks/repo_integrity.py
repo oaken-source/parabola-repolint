@@ -5,7 +5,6 @@ these are linter checks for PKGBUILD / .pkg.tar.xz / repo.db entry integrity
 from parabola_repolint.linter import LinterIssue, LinterCheckBase, LinterCheckType
 
 
-# pylint: disable=no-self-use
 class PkgBuildMissingPkgEntries(LinterCheckBase):
     '''
   for the list of packages produced by the pkgbuild for the supported arches,
@@ -19,6 +18,7 @@ class PkgBuildMissingPkgEntries(LinterCheckBase):
 
     header = 'PKGBUILDs with missing entries in repo.db'
 
+    # pylint: disable=no-self-use
     def check(self, pkgbuild):
         ''' run the check '''
         missing = []
@@ -30,7 +30,6 @@ class PkgBuildMissingPkgEntries(LinterCheckBase):
             raise LinterIssue('%s (%s)', pkgbuild, ','.join(missing))
 
 
-# pylint: disable=no-self-use
 class PkgBuildDuplicatePkgEntries(LinterCheckBase):
     '''
   for the list of packages produced by the pkgbuild for the supported arches,
@@ -44,6 +43,7 @@ class PkgBuildDuplicatePkgEntries(LinterCheckBase):
 
     header = 'PKGBUILDs with duplicate entries in repo.db'
 
+    # pylint: disable=no-self-use
     def check(self, pkgbuild):
         ''' run the check '''
         duplicate = []
@@ -57,7 +57,6 @@ class PkgBuildDuplicatePkgEntries(LinterCheckBase):
             raise LinterIssue('%s (%s)', pkgbuild, ','.join(duplicate))
 
 
-# pylint: disable=no-self-use
 class PkgBuildMissingPkgFiles(LinterCheckBase):
     '''
   for the list of packages produced by the pkgbuild for the supported arches,
@@ -70,6 +69,7 @@ class PkgBuildMissingPkgFiles(LinterCheckBase):
 
     header = 'PKGBUILDs with missing built packages'
 
+    # pylint: disable=no-self-use
     def check(self, pkgbuild):
         ''' run the check '''
         missing = []
@@ -81,7 +81,6 @@ class PkgBuildMissingPkgFiles(LinterCheckBase):
             raise LinterIssue('%s (%s)', pkgbuild, ','.join(missing))
 
 
-# pylint: disable=no-self-use
 class PkgEntryMissingPkgbuild(LinterCheckBase):
     '''
   for the list of entries in a repo.db, check whether a valid PKGBUILD exists
@@ -94,13 +93,13 @@ class PkgEntryMissingPkgbuild(LinterCheckBase):
 
     header = 'repo.db entries with no valid PKGBUILD'
 
+    # pylint: disable=no-self-use
     def check(self, pkgentry):
         ''' run the check '''
         if not pkgentry.pkgbuilds:
             raise LinterIssue('%s', pkgentry)
 
 
-# pylint: disable=no-self-use
 class PkgEntryDuplicatePkgbuilds(LinterCheckBase):
     '''
   for the list of entries in a repo.db, check whether more than one valid
@@ -113,6 +112,7 @@ class PkgEntryDuplicatePkgbuilds(LinterCheckBase):
 
     header = 'repo.db entries with duplicate PKGBUILDs'
 
+    # pylint: disable=no-self-use
     def check(self, pkgentry):
         ''' run the check '''
         if len(pkgentry.pkgbuilds) > 1:
@@ -122,7 +122,6 @@ class PkgEntryDuplicatePkgbuilds(LinterCheckBase):
             raise LinterIssue('%s (%s)', pkgentry, ','.join(duplicates))
 
 
-# pylint: disable=no-self-use
 class PkgEntryMissingPkgFile(LinterCheckBase):
     '''
   for the list of entries in a repo.db, check wether a built package exists that
@@ -135,13 +134,13 @@ class PkgEntryMissingPkgFile(LinterCheckBase):
 
     header = 'repo.db entries with no valid built package'
 
+    # pylint: disable=no-self-use
     def check(self, pkgentry):
         ''' run the check '''
         if not pkgentry.pkgfile:
             raise LinterIssue('%s', pkgentry)
 
 
-# pylint: disable=no-self-use
 class PkgFileMissingPkgbuild(LinterCheckBase):
     '''
   for the list of built packages, check whether a valid PKGBUILD exists that
@@ -154,6 +153,7 @@ class PkgFileMissingPkgbuild(LinterCheckBase):
 
     header = 'built packages with no valid PKGBUILD'
 
+    # pylint: disable=no-self-use
     def check(self, pkgfile):
         ''' run the check '''
         if not pkgfile.pkgbuilds:
@@ -161,7 +161,6 @@ class PkgFileMissingPkgbuild(LinterCheckBase):
             raise LinterIssue('%s (built %s)', pkgfile, builddate)
 
 
-# pylint: disable=no-self-use
 class PkgFileDuplicatePkgbuilds(LinterCheckBase):
     '''
   for the list of built packages, check whether more than one valid PKGBUILD
@@ -174,6 +173,7 @@ class PkgFileDuplicatePkgbuilds(LinterCheckBase):
 
     header = 'built packages with duplicate PKGBUILDs'
 
+    # pylint: disable=no-self-use
     def check(self, pkgfile):
         ''' run the check '''
         if len(pkgfile.pkgbuilds) > 1:
@@ -183,7 +183,6 @@ class PkgFileDuplicatePkgbuilds(LinterCheckBase):
             raise LinterIssue('%s (%s)', pkgfile, ','.join(duplicates))
 
 
-# pylint: disable=no-self-use
 class PkgFileMissingPkgEntry(LinterCheckBase):
     '''
   for the list of built packages, check wether a repo.db entry exists that refers
@@ -196,6 +195,7 @@ class PkgFileMissingPkgEntry(LinterCheckBase):
 
     header = 'built packages without a referring repo.db entry'
 
+    # pylint: disable=no-self-use
     def check(self, pkgfile):
         ''' run the check '''
         if not pkgfile.pkgentries:
@@ -203,7 +203,6 @@ class PkgFileMissingPkgEntry(LinterCheckBase):
             raise LinterIssue('%s (built %s)', pkgfile, builddate)
 
 
-# pylint: disable=no-self-use
 class PkgFileDuplicatePkgEntries(LinterCheckBase):
     '''
   for the list of built packages, check that at most one repo.db entry exists
@@ -216,6 +215,7 @@ class PkgFileDuplicatePkgEntries(LinterCheckBase):
 
     header = 'built packages with duplicate referring repo.db entries'
 
+    # pylint: disable=no-self-use
     def check(self, pkgfile):
         ''' run the check '''
         if len(pkgfile.pkgentries) > 1:

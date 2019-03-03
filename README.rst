@@ -191,3 +191,17 @@ pkgfile_invalid_signature
 this check validates the package signature against the pacman keyrings. It
 reports an issue whenever a package is signed by an unknown key, that is not
 part of the keyring, or by a key that has expired.
+
+package dependency checks
+-------------------------
+
+a number of checks verifying the satisfiability of dependencies in the repos
+
+unsatisfiable_depends
+~~~~~~~~~~~~~~~~~~~~~
+
+for the list of entries in the repo.db's check that all entries in the
+depends() array of the package are satisfiable with the provides() entries of
+the packages in the repositories core, extra, community, and the ones
+configured in CONFIG.parabola.repos. This check reports an issue whenever a
+depends() entry is found that is not satisfiable.

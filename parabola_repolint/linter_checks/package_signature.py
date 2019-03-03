@@ -9,7 +9,6 @@ import datetime
 from parabola_repolint.linter import LinterIssue, LinterCheckBase, LinterCheckType
 
 
-# pylint: disable=no-self-use
 class SigningKeyExpiry(LinterCheckBase):
     '''
   for the list of signing keys and subkeys in parabola.gpg that are used to sign
@@ -25,6 +24,7 @@ class SigningKeyExpiry(LinterCheckBase):
 
     header = 'signing keys expired or about to expire'
 
+    # pylint: disable=no-self-use
     def check(self, key):
         ''' run the check '''
         if not key['packages']:
@@ -48,7 +48,6 @@ class SigningKeyExpiry(LinterCheckBase):
             raise LinterIssue('%s: %s (signed %i)', key['keyid'], reason, len(key['packages']))
 
 
-# pylint: disable=no-self-use
 class MasterKeyExpiry(LinterCheckBase):
     '''
   for the list of master keys in parabola.gpg, check whether they are expired, or
@@ -63,6 +62,7 @@ class MasterKeyExpiry(LinterCheckBase):
 
     header = 'master keys expired or about to expire'
 
+    # pylint: disable=no-self-use
     def check(self, key):
         ''' run the check '''
         if not key['expires']:
@@ -82,7 +82,6 @@ class MasterKeyExpiry(LinterCheckBase):
             raise LinterIssue('%s: %s', key['keyid'], reason)
 
 
-# pylint: disable=no-self-use
 class PkgEntrySignatureMismatch(LinterCheckBase):
     '''
   for the list of entries in the repo.db's, check whether the signature stored in
@@ -97,6 +96,7 @@ class PkgEntrySignatureMismatch(LinterCheckBase):
 
     header = 'repo.db entries with mismatched signing keys'
 
+    # pylint: disable=no-self-use
     def check(self, pkgentry):
         ''' run the check '''
         if not pkgentry.pkgfile:
@@ -127,7 +127,6 @@ class PkgEntrySignatureMismatch(LinterCheckBase):
             raise LinterIssue('%s: %s != %s', pkgentry, key1, key2)
 
 
-# pylint: disable=no-self-use
 class PkgFileInvalidSignature(LinterCheckBase):
     '''
   this check validates the package signature against the pacman keyrings. It

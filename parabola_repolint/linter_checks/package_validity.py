@@ -7,7 +7,6 @@ import hashlib
 from parabola_repolint.linter import LinterIssue, LinterCheckBase, LinterCheckType
 
 
-# pylint: disable=no-self-use
 class PkgFileMissingBuildinfo(LinterCheckBase):
     '''
   for the list of built packages in the repos, check whether each has an embedded
@@ -21,6 +20,7 @@ class PkgFileMissingBuildinfo(LinterCheckBase):
 
     header = 'built packages with no .BUILDINFO file'
 
+    # pylint: disable=no-self-use
     def check(self, pkgentry):
         ''' run the check '''
         if not pkgentry.pkgfile:
@@ -32,7 +32,6 @@ class PkgFileMissingBuildinfo(LinterCheckBase):
             raise LinterIssue('%s (built %s)', pkgfile, builddate)
 
 
-# pylint: disable=no-self-use
 class PkgFileMissingPkginfo(LinterCheckBase):
     '''
   for the list of built packages in the repos, check whether each has an embedded
@@ -45,6 +44,7 @@ class PkgFileMissingPkginfo(LinterCheckBase):
 
     header = 'built packages with no .PKGINFO file'
 
+    # pylint: disable=no-self-use
     def check(self, pkgfile):
         ''' run the check '''
         if not pkgfile.pkginfo:
@@ -66,6 +66,7 @@ class PkgFileBadPkgbuildDigest(LinterCheckBase):
 
     header = 'built packages with mismatched PKGBUILD digests'
 
+    # pylint: disable=no-self-use
     def check(self, pkgentry):
         ''' run the check '''
         if not pkgentry.pkgfile:

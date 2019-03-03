@@ -25,6 +25,7 @@ setup(
     },
 
     install_requires=[
+        'pyalpm',
         'pyyaml',
         'sh',
         'pyxdg',

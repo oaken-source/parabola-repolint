@@ -5,7 +5,6 @@ these are checks for things in the repo that are redundant and can go away.
 from parabola_repolint.linter import LinterIssue, LinterCheckBase, LinterCheckType
 
 
-# pylint: disable=no-self-use
 class RedundantPkgEntryPCR(LinterCheckBase):
     '''
   for the list of entries in the parabola repos, check whether package is

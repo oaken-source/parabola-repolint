@@ -10,10 +10,73 @@ import logging
 import datetime
 
 import sh
+from pyalpm import vercmp
 from xdg import BaseDirectory
 
 from parabola_repolint.config import CONFIG
 from parabola_repolint.gnupg import GPG_PACMAN
+
+
+class PkgVersion():
+    ''' represent a package version number and its components '''
+
+    def __init__(self, pkgver):
+        ''' constructor '''
+        self._version_str = pkgver
+
+        # as per libalpm/version.c:parseEVR
+        self._epoch = '0'
+        self._pkgrel = None
+
+        if ':' in pkgver:
+            self._epoch, pkgver = pkgver.split(':', 1)
+        if '-' in pkgver:
+            pkgver, self._pkgrel = pkgver.rsplit('-', 1)
+
+        self._pkgver = pkgver
+
+    @property
+    def epoch(self):
+        ''' produce the epoch part of the version '''
+        return self._epoch
+
+    @property
+    def pkgver(self):
+        ''' produce the pkgver part of the version '''
+        return self._pkgver
+
+    @property
+    def pkgrel(self):
+        ''' produce the pkgrel part of the version '''
+        return self._pkgrel
+
+    def _cmp(self, other):
+        ''' compare two version strings and indicate their relationship '''
+        return vercmp(str(self), str(other))
+
+    def __eq__(self, other):
+        ''' indicate whether two versions can be considered equal '''
+        return self._cmp(other) == 0
+
+    def __lt__(self, other):
+        ''' indicate whether one version is less than another '''
+        return self._cmp(other) < 0
+
+    def __gt__(self, other):
+        ''' indicate whether one version is greater than another '''
+        return self._cmp(other) > 0
+
+    def __le__(self, other):
+        ''' indicate whether one version is less or equal to another '''
+        return self._cmp(other) <= 0
+
+    def __ge__(self, other):
+        ''' indicate whether one version is greater or equal to another '''
+        return self._cmp(other) >= 0
+
+    def __repr__(self):
+        ''' produce the original string representation of the version '''
+        return self._version_str
 
 
 BUILDINFO_VALUE = [
@@ -301,9 +364,24 @@ class PkgEntry():
         return self._data['NAME']
 
     @property
+    def pkgver(self):
+        ''' produce the pkgver of the package '''
+        return PkgVersion(self._data['VERSION'])
+
+    @property
     def pgpsig(self):
         ''' produce the base64 encoded pgp signature of the package '''
         return self._data['PGPSIG']
+
+    @property
+    def provides(self):
+        ''' produce the names provided by the package '''
+        return set(self._data.get('PROVIDES', '').split())
+
+    @property
+    def depends(self):
+        ''' produce the install time dependencies of the package '''
+        return set(self._data.get('DEPENDS', '').split())
 
     @property
     def arch(self):
@@ -589,6 +667,7 @@ class Repo():
 
         self._pkgentries = []
         self._pkgentries_cache = {}
+        self._provides_cache = {}
         self._load_pkgentries()
 
         logging.info('%s pkgentries: %i', name, len(self._pkgentries))
@@ -596,6 +675,8 @@ class Repo():
             out.write(json.dumps(self._pkgentries, indent=4, sort_keys=True, default=str))
         with open(os.path.join(self._pkgentries_dir, '.pkgentries_cache'), 'w') as out:
             out.write(json.dumps(self._pkgentries_cache, indent=4, sort_keys=True, default=str))
+        with open(os.path.join(self._pkgentries_dir, '.provides_cache'), 'w') as out:
+            out.write(json.dumps(self._provides_cache, indent=4, sort_keys=True, default=str))
 
         self._pkgfiles = []
         self._load_pkgfiles()
@@ -628,6 +709,11 @@ class Repo():
     def pkgentries_cache(self):
         ''' produce the list of pkgentries by pkgname '''
         return self._pkgentries_cache
+
+    @property
+    def provides_cache(self):
+        ''' produce the list of pkgentries by provides entries '''
+        return self._provides_cache
 
     @property
     def pkgfiles(self):
@@ -701,6 +787,21 @@ class Repo():
                     self._pkgentries_cache[pkgentry.arch][pkgentry.pkgname] = []
                 self._pkgentries_cache[pkgentry.arch][pkgentry.pkgname].append(pkgentry)
 
+                for provides in pkgentry.provides.union([pkgentry.pkgname]):
+                    if pkgentry.arch not in self._provides_cache:
+                        self._provides_cache[pkgentry.arch] = {}
+
+                    splits = ['==', '>=', '<=', '>', '<', '=']
+                    for split in splits:
+                        if split in provides:
+                            provides = provides.split(split)[0]
+                            break
+
+                    if provides not in self._provides_cache[pkgentry.arch]:
+                        self._provides_cache[pkgentry.arch][provides] = []
+                    self._provides_cache[pkgentry.arch][provides].append(pkgentry)
+
+
     def _load_pkgfiles(self):
         ''' load the pkg.tar.xz files from the repo '''
         i = 0
@@ -724,7 +825,7 @@ class Repo():
         return '[%s]' % self._name
 
 
-ARCH_REPOS = {'core', 'extra', 'community'}
+ARCH_REPOS = ['core', 'extra', 'community']
 
 
 class RepoCache():
@@ -761,6 +862,11 @@ class RepoCache():
     def pkgfiles(self):
         ''' produce the list of pkg.tar.xz files in all repos '''
         return [p for r in self._repos.values() for p in r.pkgfiles]
+
+    @property
+    def repos(self):
+        ''' produce repo objects for the parabola repos under test '''
+        return self._repos
 
     @property
     def arch_repos(self):

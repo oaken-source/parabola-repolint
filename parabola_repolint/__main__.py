@@ -72,6 +72,7 @@ def checked_main(args):
     linter.run_checks()
 
     res = linter.format()
+    logging.info(res)
 
     if CONFIG.notify.etherpad_url:
         etherpad_replace(res)
