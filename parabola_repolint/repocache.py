@@ -323,6 +323,10 @@ class PkgEntry():
         with open(os.path.join(path, 'desc'), 'r') as infile:
             data = infile.read()
 
+        if os.path.exists(os.path.join(path, 'depends')):
+            with open(os.path.join(path, 'depends'), 'r') as infile:
+                data += "\n" + infile.read()
+
         self._data = {}
         cur = None
         for line in data.splitlines():
