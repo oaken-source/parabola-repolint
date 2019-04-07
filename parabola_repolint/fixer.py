@@ -27,7 +27,7 @@ class Fixer():
                 fixbase = check.fixhook_base(issue)
                 fixargs = check.fixhook_args(issue)
 
-                path = os.path.join(base_path, fixbase + '.sh')
+                path = os.path.join(base_path, fixbase)
                 if not os.path.exists(path):
                     continue
 
