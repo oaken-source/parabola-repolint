@@ -9,6 +9,7 @@ import sys
 
 from parabola_repolint.config import CONFIG
 from parabola_repolint.linter import Linter
+from parabola_repolint.fixer import Fixer
 from parabola_repolint.repocache import RepoCache
 from parabola_repolint.notify import etherpad_replace, send_mail, write_log
 
@@ -73,6 +74,10 @@ def checked_main(args):
 
     res = linter.format()
     logging.info(res)
+
+    if CONFIG.fixhooks.enabled:
+        fixer = Fixer(cache)
+        fixer.run_fixes(linter.triggered_checks)
 
     if CONFIG.notify.etherpad_url:
         etherpad_replace(res)

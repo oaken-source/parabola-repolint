@@ -5,6 +5,11 @@ parabola:
   abslibre: git://git.parabola.nu/abslibre/abslibre.git
   mirror: rsync://repo.parabola.nu:875/repos/
 
+fixhooks:
+  enabled: no
+  scriptroot: /usr/lib/parabola-repolint/fixhooks/
+  abslibre: null
+
 notify:
   etherpad_url: https://pad.riseup.net/p/ParabolaRepolint
   smtp_host: null

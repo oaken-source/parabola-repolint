@@ -89,6 +89,14 @@ class UnsatisfiableDepends(LinterCheckBase):
         if missing:
             raise LinterIssue('%s (%s)', pkgentry, ','.join(missing))
 
+    def fixhook_base(self, issue):
+        ''' produce a custom fixhook base '''
+        return '/'.join(str(issue[1]).split('/')[::2])
+
+    def fixhook_args(self, issue):
+        ''' produce custom fixhook arguments '''
+        return [ str(issue[1]).split('/')[1], *issue[2].split(',') ]
+
 
 class UnsatisfiableMakedepends(LinterCheckBase):
     '''
