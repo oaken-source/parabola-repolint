@@ -153,6 +153,10 @@ class PkgFileInvalidSignature(LinterCheckBase):
                 raise LinterIssue('%s: signing key expired (%s)', package, verify['key_id'])
 
         if not verify['valid']:
-            # if this is triggered, add more cases here.
-            logging.warning('%s: unknown gpg invalidity: %s', package, verify)
-            raise LinterIssue('%s: invalid signature', package)
+            if verify['key_status'] == 'signing key has expired' and verify['status'] == 'signature valid':
+                # host keyring is out of date, not an issue per se
+                pass
+            else:
+                # catchall rule in case something is missing above
+                logging.warning('%s: unknown gpg invalidity: %s', package, verify)
+                raise LinterIssue('%s: invalid signature', package)
