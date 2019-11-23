@@ -459,6 +459,7 @@ SRCINFO_LIST = [
     'sha1sums',
     'sha256sums',
     'sha512sums',
+    'b2sums',
     'options',
 ]
 
