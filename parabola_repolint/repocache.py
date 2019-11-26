@@ -427,53 +427,25 @@ class PkgEntry():
         return "%s/%s/%s" % (repo, arch, self.pkgname)
 
 
-SRCINFO_VALUE = [
-    'pkgbase',
-    'pkgname',
-    'pkgdesc',
-    'pkgver',
-    'pkgrel',
-    'url',
-    'epoch',
-    'changelog',
-]
-SRCINFO_SET = [
-    'arch',
-    'license',
-    'checkdepends',
-    'conflicts',
-    'depends',
-    'provides',
-    'groups',
-    'install',
-    'noextract',
-    'backup',
-    'makedepends',
-    'optdepends',
-    'replaces',
-    'validpgpkeys',
-]
-SRCINFO_LIST = [
-    'source',
-    'md5sums',
-    'sha1sums',
-    'sha256sums',
-    'sha512sums',
-    'b2sums',
-    'options',
-]
+# pkgbuild_schema_strings
+# pkgbuild_schema_arrays
+# pkgbuild_schema_arch_arrays
+# pkgbuild_schema_package_overrides
+SRCINFO_VALUE = sh.env('-i', 'bash', '-c', '''
+    . /usr/share/makepkg/util/schema.sh
+    echo -n "${pkgbuild_schema_strings[@]}"
+''').split()
+
+SRCINFO_LIST = sh.env('-i', 'bash', '-c', '''
+    . /usr/share/makepkg/util/schema.sh
+    echo -n "${pkgbuild_schema_arrays[@]}"
+''').split()
 
 for ARCH in CONFIG.parabola.arches:
-    SRCINFO_SET.extend([
-        'depends_%s' % ARCH,
-        'makedepends_%s' % ARCH,
-        'optdepends_%s' % ARCH,
-    ])
-    SRCINFO_LIST.extend([
-        'source_%s' % ARCH,
-        'sha256sums_%s' % ARCH,
-        'sha512sums_%s' % ARCH,
-    ])
+    SRCINFO_LIST.extend([ '%s_%s' % (v, ARCH) for v in sh.env('-i', 'bash', '-c', '''
+    . /usr/share/makepkg/util/schema.sh
+    echo -n "${pkgbuild_schema_arch_arrays[@]}"
+''').split()])
 
 
 class Srcinfo():
@@ -500,13 +472,11 @@ class Srcinfo():
             if key == 'pkgname':
                 self._pkginfo[value] = {}
                 current_dict = self._pkginfo[value]
-
-            if key in SRCINFO_VALUE:
+                if 'pkgname' not in self._pkgbase:
+                    self._pkgbase['pkgname'] = list()
+                self._pkgbase['pkgname'].append(value)
+            elif key in SRCINFO_VALUE:
                 current_dict[key] = value
-            elif key in SRCINFO_SET:
-                if key not in current_dict:
-                    current_dict[key] = set()
-                current_dict[key].add(value)
             elif key in SRCINFO_LIST:
                 if key not in current_dict:
                     current_dict[key] = list()
