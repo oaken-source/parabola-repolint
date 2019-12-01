@@ -482,7 +482,7 @@ class Srcinfo():
                     current_dict[key] = list()
                 current_dict[key].append(value)
             else:
-                logging.warning('unhandled SRCINFO key: %s', key)
+                logging.warning('unhandled SRCINFO key: "%s" (%s)', key, line)
 
     @property
     def pkgbase(self):
@@ -587,10 +587,10 @@ class PkgBuild():
 
         self._arches = srcinfo.pkgbase['arch']
         if 'any' in self._arches:
-            self._arches = self._arches.difference(['any'])
-            self._arches = self._arches.union(CONFIG.parabola.arches)
+            self._arches = set(self._arches).difference(['any'])
+            self._arches = set(self._arches).union(CONFIG.parabola.arches)
 
-        for arch in self._arches.intersection(CONFIG.parabola.arches):
+        for arch in set(self._arches).intersection(CONFIG.parabola.arches):
             os.environ['CARCH'] = arch
             si_file = os.path.join(os.path.dirname(self._path), '.%s.srcinfo' % arch)
             si_str = self._cached_makepkg(si_file, mtime, '--printsrcinfo')
@@ -718,7 +718,7 @@ class Repo():
                     sys.stdout.flush()
 
                 self._pkgbuilds.append(pkgbuild)
-                for arch in pkgbuild.arches.intersection(CONFIG.parabola.arches):
+                for arch in set(pkgbuild.arches).intersection(CONFIG.parabola.arches):
                     if arch not in self._pkgbuild_cache:
                         self._pkgbuild_cache[arch] = {}
                     pkgname = '%s-debug' % pkgbuild.srcinfo[arch].pkgbase['pkgbase']

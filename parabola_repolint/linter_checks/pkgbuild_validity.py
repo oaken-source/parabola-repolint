@@ -53,7 +53,7 @@ class UnsupportedArches(LinterCheckBase):
 
         unsup = {}
 
-        unsup_base = pkgbuild.arches.difference(KNOWN_ARCHES, ['any'])
+        unsup_base = set(pkgbuild.arches).difference(KNOWN_ARCHES, ['any'])
         if unsup_base:
             unsup['pkgbase'] = unsup_base
 
@@ -61,7 +61,7 @@ class UnsupportedArches(LinterCheckBase):
             for pkgname, pkginfo in pkgbuild.srcinfo[arch].pkginfo.items():
                 if 'arch' not in pkginfo:
                     continue
-                unsup_pkg = pkginfo['arch'].difference(unsup_base, KNOWN_ARCHES, ['any'])
+                unsup_pkg = set(pkginfo['arch']).difference(unsup_base, KNOWN_ARCHES, ['any'])
                 if unsup_pkg:
                     if pkgname not in unsup:
                         unsup[pkgname] = set()
