@@ -7,9 +7,16 @@ import time
 import lzma
 import tempfile
 import smtplib
+import datetime
 
 import selenium
 import splinter
+
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.action_chains import ActionChains
 
 from parabola_repolint.config import CONFIG
 
@@ -21,44 +28,70 @@ def etherpad_replace(content):
     browser = splinter.Browser(headless=True)
     browser.visit(pad)
 
-    with tempfile.NamedTemporaryFile('w') as tmp:
+    with tempfile.NamedTemporaryFile('w', suffix=".txt") as tmp:
+
         tmp.write(content)
         tmp.flush()
 
-        for attempt in range(20):
-            try:
-                btn = browser.driver.find_element_by_class_name('buttonicon-import_export')
-                btn.click()
-                break
-            except (selenium.common.exceptions.NoSuchElementException,
-                    selenium.common.exceptions.ElementNotInteractableException):
-                if attempt >= 19:
-                    raise
-                time.sleep(0.2)
+        WebDriverWait(browser.driver, 10).until(
+            EC.presence_of_element_located((By.NAME, "ace_outer"))
+        )
 
-        for attempt in range(20):
-            try:
-                fileinput = browser.driver.find_element_by_id('importfileinput')
-                fileinput.send_keys(tmp.name)
-                break
-            except (selenium.common.exceptions.NoSuchElementException,
-                    selenium.common.exceptions.ElementNotInteractableException):
-                if attempt >= 19:
-                    raise
-                time.sleep(0.2)
+        outer = browser.driver.find_element_by_name('ace_outer')
+        browser.driver.switch_to.frame(outer)
 
-        for attempt in range(20):
-            try:
-                submit = browser.driver.find_element_by_id('importsubmitinput')
-                submit.click()
-                break
-            except (selenium.common.exceptions.NoSuchElementException,
-                    selenium.common.exceptions.ElementNotInteractableException):
-                if attempt >= 19:
-                    raise
-                time.sleep(0.2)
+        WebDriverWait(browser.driver, 10).until(
+            EC.presence_of_element_located((By.NAME, "ace_inner"))
+        )
 
+        inner = browser.driver.find_element_by_name('ace_inner')
+        browser.driver.switch_to.frame(inner)
+
+        WebDriverWait(browser.driver, 10).until(
+            EC.presence_of_element_located((By.ID, "innerdocbody"))
+        )
+
+        browser.driver.switch_to.default_content()
+        outer = browser.driver.find_element_by_name('ace_outer')
+        browser.driver.switch_to.frame(outer)
+
+        e = browser.driver.find_element_by_name('ace_inner')
+        e.click()
+
+        action = ActionChains(browser.driver)
+        action.key_down(Keys.CONTROL)
+        action.send_keys("a")
+        action.key_up(Keys.CONTROL)
+        action.send_keys(Keys.BACKSPACE)
+        action.send_keys("update incoming...\n")
+        action.perform();
+
+        browser.driver.switch_to.default_content()
+
+        browser.screenshot("/tmp/%s.png" % datetime.datetime.now())
+
+        btn = browser.driver.find_element_by_class_name('buttonicon-import_export')
+        btn.click()
+
+        time.sleep(1)
+        browser.screenshot("/tmp/%s.png" % datetime.datetime.now())
+
+        fileinput = browser.driver.find_element_by_id('importfileinput')
+        fileinput.send_keys(tmp.name)
+
+        time.sleep(1)
+        browser.screenshot("/tmp/%s.png" % datetime.datetime.now())
+
+        WebDriverWait(browser.driver, 10).until(
+            EC.visibility_of_element_located((By.ID, "importsubmitinput"))
+        )
+
+        submit = browser.driver.find_element_by_id('importsubmitinput')
+        submit.click()
+
+        time.sleep(1)
         browser.driver.switch_to_alert().accept()
+
         time.sleep(1)
         browser.quit()
 

@@ -714,7 +714,7 @@ class Repo():
 
                 i += 1
                 if sys.stdout.isatty():
-                    sys.stdout.write(' %s pkgbuilds: %i\r' % (self._name, i))
+                    sys.stdout.write(' %s pkgbuilds: %i (%s)\n' % (self._name, i, pkgbuild))
                     sys.stdout.flush()
 
                 self._pkgbuilds.append(pkgbuild)

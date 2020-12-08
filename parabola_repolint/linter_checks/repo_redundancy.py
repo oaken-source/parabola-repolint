@@ -16,7 +16,7 @@ class RedundantPkgEntryPCR(LinterCheckBase):
     name = 'redundant_pkgentry_pcr'
     check_type = LinterCheckType.PKGENTRY
 
-    header = 'redundant packagess in [pcr]'
+    header = 'redundant packages in [pcr]'
 
     def check(self, pkgentry):
         ''' run the check '''
