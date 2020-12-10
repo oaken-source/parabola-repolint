@@ -66,21 +66,23 @@ def etherpad_replace(content):
         action.send_keys("update incoming...\n")
         action.perform();
 
+        time.sleep(0.2)
+
         browser.driver.switch_to.default_content()
 
-        browser.screenshot("/tmp/%s.png" % datetime.datetime.now())
+        #browser.screenshot("/tmp/%s.png" % datetime.datetime.now())
 
         btn = browser.driver.find_element_by_class_name('buttonicon-import_export')
         btn.click()
 
         time.sleep(1)
-        browser.screenshot("/tmp/%s.png" % datetime.datetime.now())
+        #browser.screenshot("/tmp/%s.png" % datetime.datetime.now())
 
         fileinput = browser.driver.find_element_by_id('importfileinput')
         fileinput.send_keys(tmp.name)
 
         time.sleep(1)
-        browser.screenshot("/tmp/%s.png" % datetime.datetime.now())
+        #browser.screenshot("/tmp/%s.png" % datetime.datetime.now())
 
         WebDriverWait(browser.driver, 10).until(
             EC.visibility_of_element_located((By.ID, "importsubmitinput"))
