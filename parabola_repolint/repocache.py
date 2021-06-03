@@ -89,6 +89,9 @@ BUILDINFO_VALUE = [
     'packager',
     'builddate',
     'builddir',
+    'startdir',
+    'buildtool',
+    'buildtoolver',
 ]
 BUILDINFO_SET = [
     'buildenv',
