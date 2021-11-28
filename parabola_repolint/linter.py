@@ -63,6 +63,7 @@ class LinterCheckType(enum.Enum):
     PKGENTRY = 3
     SIGNING_KEY = 4
     MASTER_KEY = 5
+    ALL_PKGFILE = 6
 
 
 def _is_linter_check(cls):
@@ -128,6 +129,7 @@ class Linter():
             LinterCheckType.PKGFILE: self._run_check_pkgfile,
             LinterCheckType.SIGNING_KEY: self._run_check_signing_key,
             LinterCheckType.MASTER_KEY: self._run_check_master_key,
+            LinterCheckType.ALL_PKGFILE: self._run_check_all_pkgfile,
         }
 
         for check_type in LinterCheckType:
@@ -162,6 +164,11 @@ class Linter():
         ''' run a MASTER_KEY type check '''
         for key in self._cache.keyring:
             self._try_check(check, key)
+
+    def _run_check_all_pkgfile(self, check):
+        ''' run a PKGFILE type check '''
+        for pkgfile in self._cache.pkgfiles + self._cache.arch_pkgfiles:
+            self._try_check(check, pkgfile)
 
     # pylint: disable=no-self-use
     def _try_check(self, check, *args, **kwargs):

@@ -139,52 +139,66 @@ class PkgFile():
 
         self._repoarch = repoarch
 
-        mtime = os.path.getmtime(self._path)
-
         self._pkginfo = {}
-        pkginfo = self._cached_pkginfo(path + '.pkginfo', mtime)
-        for line in pkginfo.splitlines():
-            if line.startswith('#'):
-                continue
-
-            key, value = line.split('=', 1)
-            key = key.strip()
-            value = value.strip()
-
-            if key in PKGINFO_VALUE:
-                self._pkginfo[key] = value
-            elif key in PKGINFO_SET:
-                if key not in self._pkginfo:
-                    self._pkginfo[key] = set()
-                self._pkginfo[key].add(value)
-            elif key in PKGINFO_LIST:
-                if key not in self._pkginfo:
-                    self._pkginfo[key] = list()
-                self._pkginfo[key].append(value)
-            else:
-                logging.warning('unhandled PKGINFO key: %s', key)
-
         self._buildinfo = {}
-        buildinfo = self._cached_buildinfo(path + '.buildinfo', mtime)
-        for line in buildinfo.splitlines():
-            key, value = line.split('=', 1)
-            key = key.strip()
-            value = value.strip()
+        self._siginfo = {}
 
-            if key in BUILDINFO_VALUE:
-                self._buildinfo[key] = value
-            elif key in BUILDINFO_SET:
-                if key not in self._buildinfo:
-                    self._buildinfo[key] = set()
-                self._buildinfo[key].add(value)
-            elif key in BUILDINFO_LIST:
-                if key not in self._buildinfo:
-                    self._buildinfo[key] = list()
-                self._buildinfo[key].append(value)
-            else:
-                logging.warning('unhandled BUILDINFO key: %s', key)
+        self._fs_error = None
 
-        self._siginfo = self._cached_siginfo(path + '.siginfo', mtime)
+        try:
+            mtime = os.path.getmtime(self._path)
+
+            pkginfo = self._cached_pkginfo(path + '.pkginfo', mtime)
+            for line in pkginfo.splitlines():
+                if line.startswith('#'):
+                    continue
+
+                key, value = line.split('=', 1)
+                key = key.strip()
+                value = value.strip()
+
+                if key in PKGINFO_VALUE:
+                    self._pkginfo[key] = value
+                elif key in PKGINFO_SET:
+                    if key not in self._pkginfo:
+                        self._pkginfo[key] = set()
+                    self._pkginfo[key].add(value)
+                elif key in PKGINFO_LIST:
+                    if key not in self._pkginfo:
+                        self._pkginfo[key] = list()
+                    self._pkginfo[key].append(value)
+                else:
+                    logging.warning('unhandled PKGINFO key: %s', key)
+
+            buildinfo = self._cached_buildinfo(path + '.buildinfo', mtime)
+            for line in buildinfo.splitlines():
+                key, value = line.split('=', 1)
+                key = key.strip()
+                value = value.strip()
+
+                if key in BUILDINFO_VALUE:
+                    self._buildinfo[key] = value
+                elif key in BUILDINFO_SET:
+                    if key not in self._buildinfo:
+                        self._buildinfo[key] = set()
+                    self._buildinfo[key].add(value)
+                elif key in BUILDINFO_LIST:
+                    if key not in self._buildinfo:
+                        self._buildinfo[key] = list()
+                    self._buildinfo[key].append(value)
+                else:
+                    logging.warning('unhandled BUILDINFO key: %s', key)
+
+            self._siginfo = self._cached_siginfo(path + '.siginfo', mtime)
+        except FileNotFoundError as e:
+            self._fs_error = e
+            if 'pkgname' not in self._pkginfo:
+                filename = os.path.basename(self._path)
+                *pkgname, pkgver, pkgrel, pkgext  = filename.split('-')
+                pkgname = '-'.join(pkgname)
+                pkgext = pkgext.split('.')[0]
+                self._pkginfo['pkgname'] = pkgname
+            logging.exception(e)
 
         pkgbuild_cache = repo.pkgbuild_cache.get(repoarch, {})
         self._pkgbuilds = pkgbuild_cache.get(self.pkgname, [])
@@ -789,17 +803,23 @@ class Repo():
                         self._provides_cache[pkgentry.arch][provides] = []
                     self._provides_cache[pkgentry.arch][provides].append(pkgentry)
 
-
     def _load_pkgfiles(self):
         ''' load the pkg.tar.xz files from the repo '''
         i = 0
         arches_dir = os.path.join(self._pkgfiles_dir, 'os')
+
+        def is_pkgfile(s):
+            for ext in ['gz', 'bz2', 'xz', 'zst', 'Z']:
+                if s.endswith('.pkg.tar.%s' % ext):
+                    return True
+            return False
+
         for arch in os.scandir(arches_dir):
             if arch.name not in CONFIG.parabola.arches:
                 continue
 
             for pkgfile_direntry in os.scandir(arch.path):
-                if pkgfile_direntry.name.endswith('.pkg.tar.xz'):
+                if is_pkgfile(pkgfile_direntry.name):
                     self._pkgfiles.append(PkgFile(self, pkgfile_direntry.path, arch.name))
 
                     i += 1
@@ -850,6 +870,11 @@ class RepoCache():
     def pkgfiles(self):
         ''' produce the list of pkg.tar.xz files in all repos '''
         return [p for r in self._repos.values() for p in r.pkgfiles]
+
+    @property
+    def arch_pkgfiles(self):
+        ''' produce the list of pkg.tar.xz files in all arch repos '''
+        return [p for r in self._arch_repos.values() for p in r.pkgfiles]
 
     @property
     def repos(self):

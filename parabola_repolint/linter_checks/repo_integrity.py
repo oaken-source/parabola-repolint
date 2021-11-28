@@ -220,3 +220,20 @@ class PkgFileDuplicatePkgEntries(LinterCheckBase):
         ''' run the check '''
         if len(pkgfile.pkgentries) > 1:
             raise LinterIssue('%s (%s)', pkgfile, ','.join(pkgfile.pkgentries))
+
+class PkgFileFileSystemError(LinterCheckBase):
+    '''
+  for the list of built packages, check that the symlinks to the package pools
+  are intact.
+'''
+
+    name = 'pkgfile_filesystem_error'
+    check_type = LinterCheckType.ALL_PKGFILE
+
+    header = 'broken symlinks in repository'
+
+    # pylint: disable=no-self-use
+    def check(self, pkgfile):
+        ''' run the check '''
+        if pkgfile._fs_error is not None:
+            raise LinterIssue('%s (%s)', pkgfile, pkgfile._fs_error)
