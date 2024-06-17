@@ -45,7 +45,6 @@ setup(
     test_suite='tests',
     tests_require=[
         'pytest',
+        'pytest_runner',
     ],
-
-    setup_requires=['pytest_runner'],
 )
